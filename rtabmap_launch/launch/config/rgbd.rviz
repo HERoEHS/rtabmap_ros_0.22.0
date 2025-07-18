@@ -6,8 +6,12 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /TF1
+        - /TF1/Frames1
+        - /odom path1
+        - /odom path1/Topic1
       Splitter Ratio: 0.5147058963775635
-    Tree Height: 505
+    Tree Height: 582
   - Class: rviz_common/Selection
     Name: Selection
   - Class: rviz_common/Tool Properties
@@ -48,6 +52,7 @@ Visualization Manager:
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /rtabmap/info
@@ -71,7 +76,7 @@ Visualization Manager:
       Download graph: false
       Download map: false
       Download namespace: rtabmap
-      Enabled: true
+      Enabled: false
       Filter ceiling (m): 0
       Filter floor (m): 0
       Invert Rainbow: false
@@ -89,12 +94,13 @@ Visualization Manager:
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /rtabmap/mapData
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Class: rtabmap_rviz_plugins/MapGraph
       Enabled: true
@@ -107,6 +113,7 @@ Visualization Manager:
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /rtabmap/mapGraph
@@ -117,54 +124,140 @@ Visualization Manager:
       Enabled: true
       Frame Timeout: 15
       Frames:
-        All Enabled: true
+        All Enabled: false
+        head_pitch_link:
+          Value: false
+        head_yaw_link:
+          Value: false
+        imu:
+          Value: false
+        l_ankle_pitch_link:
+          Value: false
+        l_ankle_roll_link:
+          Value: false
+        l_elbow_pitch_link:
+          Value: false
+        l_elbow_yaw_link:
+          Value: false
+        l_foot_link:
+          Value: false
+        l_hand:
+          Value: false
+        l_knee_pitch_link:
+          Value: false
+        l_pelvis_pitch_link:
+          Value: false
+        l_pelvis_roll_link:
+          Value: false
+        l_shoulder_pitch_link:
+          Value: false
+        l_shoulder_roll_link:
+          Value: false
+        l_shoulder_yaw_link:
+          Value: false
+        l_wrist_pitch_link:
+          Value: false
+        l_wrist_roll_link:
+          Value: false
         map:
-          Value: true
-        oak-d-base-frame:
-          Value: true
-        oak-d_frame:
-          Value: true
-        oak_imu_frame:
-          Value: true
-        oak_left_camera_frame:
-          Value: true
-        oak_left_camera_optical_frame:
-          Value: true
-        oak_model_origin:
-          Value: true
-        oak_rgb_camera_frame:
-          Value: true
-        oak_rgb_camera_optical_frame:
-          Value: true
-        oak_right_camera_frame:
-          Value: true
-        oak_right_camera_optical_frame:
           Value: true
         odom:
           Value: true
-      Marker Scale: 1
+        pelvis_waist:
+          Value: true
+        r_ankle_pitch_link:
+          Value: false
+        r_ankle_roll_link:
+          Value: false
+        r_elbow_pitch_link:
+          Value: false
+        r_elbow_yaw_link:
+          Value: false
+        r_foot_link:
+          Value: false
+        r_hand:
+          Value: false
+        r_knee_pitch_link:
+          Value: false
+        r_pelvis_pitch_link:
+          Value: false
+        r_pelvis_roll_link:
+          Value: false
+        r_shoulder_pitch_link:
+          Value: false
+        r_shoulder_roll_link:
+          Value: false
+        r_shoulder_yaw_link:
+          Value: false
+        r_wrist_pitch_link:
+          Value: false
+        r_wrist_roll_link:
+          Value: false
+        waist_yaw_link:
+          Value: false
+        zed_cam_link:
+          Value: false
+        zed_left_camera_frame:
+          Value: false
+        zed_left_camera_optical_frame:
+          Value: false
+        zed_right_camera_frame:
+          Value: false
+        zed_right_camera_optical_frame:
+          Value: false
+      Marker Scale: 2
       Name: TF
       Show Arrows: true
       Show Axes: true
-      Show Names: false
+      Show Names: true
       Tree:
         map:
           odom:
-            oak-d-base-frame:
-              oak-d_frame:
-                oak_imu_frame:
-                  {}
-                oak_left_camera_frame:
-                  oak_left_camera_optical_frame:
-                    {}
-                oak_model_origin:
-                  {}
-                oak_rgb_camera_frame:
-                  oak_rgb_camera_optical_frame:
-                    {}
-                oak_right_camera_frame:
-                  oak_right_camera_optical_frame:
-                    {}
+            pelvis_waist:
+              imu:
+                {}
+              l_pelvis_roll_link:
+                l_pelvis_pitch_link:
+                  l_knee_pitch_link:
+                    l_ankle_roll_link:
+                      l_ankle_pitch_link:
+                        l_foot_link:
+                          {}
+              r_pelvis_roll_link:
+                r_pelvis_pitch_link:
+                  r_knee_pitch_link:
+                    r_ankle_roll_link:
+                      r_ankle_pitch_link:
+                        r_foot_link:
+                          {}
+              waist_yaw_link:
+                head_yaw_link:
+                  head_pitch_link:
+                    zed_cam_link:
+                      zed_left_camera_frame:
+                        zed_left_camera_optical_frame:
+                          {}
+                      zed_right_camera_frame:
+                        zed_right_camera_optical_frame:
+                          {}
+                l_shoulder_pitch_link:
+                  l_shoulder_roll_link:
+                    l_shoulder_yaw_link:
+                      l_elbow_pitch_link:
+                        l_elbow_yaw_link:
+                          l_wrist_pitch_link:
+                            l_wrist_roll_link:
+                              l_hand:
+                                {}
+                r_shoulder_pitch_link:
+                  r_shoulder_roll_link:
+                    r_shoulder_yaw_link:
+                      r_elbow_pitch_link:
+                        r_elbow_yaw_link:
+                          r_wrist_pitch_link:
+                            r_wrist_roll_link:
+                              r_hand:
+                                {}
       Update Interval: 0
       Value: true
     - Alpha: 0.699999988079071
@@ -176,6 +269,7 @@ Visualization Manager:
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /rtabmap/map
@@ -214,6 +308,7 @@ Visualization Manager:
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /rtabmap/odom_local_map
@@ -232,7 +327,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -247,11 +342,40 @@ Visualization Manager:
       Topic:
         Depth: 5
         Durability Policy: Volatile
+        Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /voxel_cloud
       Use Fixed Frame: true
       Use rainbow: true
+      Value: false
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz_default_plugins/Path
+      Color: 25; 255; 0
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: odom path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /rtabmap/mapPath
       Value: true
   Enabled: true
   Global Options:
@@ -268,6 +392,9 @@ Visualization Manager:
     - Class: rviz_default_plugins/Measure
       Line color: 128; 128; 0
     - Class: rviz_default_plugins/SetInitialPose
+      Covariance x: 0.25
+      Covariance y: 0.25
+      Covariance yaw: 0.06853891909122467
       Topic:
         Depth: 5
         Durability Policy: Volatile
@@ -296,39 +423,39 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 1.935564398765564
+      Distance: 11.830421447753906
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.024472296237945557
-        Y: 0.1059575080871582
-        Z: 0.36562198400497437
+        X: 1.1661142110824585
+        Y: 1.191447138786316
+        Z: 0.08710788190364838
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.14039947092533112
+      Pitch: 0.7503994107246399
       Target Frame: map
       Value: Orbit (rviz_default_plugins)
-      Yaw: 3.175398111343384
+      Yaw: 2.1653943061828613
     Saved: ~
 Window Geometry:
   Displays:
-    collapsed: false
-  Height: 734
-  Hide Left Dock: false
+    collapsed: true
+  Height: 811
+  Hide Left Dock: true
   Hide Right Dock: false
-  QMainWindow State: 000000ff00000000fd00000004000000000000015600000284fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073010000003d00000284000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000284fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d00000284000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004420000003efc0100000002fb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000003db0000028400000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd000000040000000000000189000002d1fc0200000008fb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb000000100044006900730070006c006100790073000000003d000002d1000000c900fffffffb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f00000284fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d00000284000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b200000000000000000000000200000490000000a9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004420000003efc0100000002fb0000000800540069006d00650100000000000004420000000000000000fb0000000800540069006d00650100000000000004500000000000000000000003a5000002d100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Tool Properties:
     collapsed: false
   Views:
     collapsed: false
-  Width: 1335
-  X: 481
-  Y: 199
+  Width: 933
+  X: 983
+  Y: 33

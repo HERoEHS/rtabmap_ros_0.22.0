@@ -1,0 +1,143 @@
+// src/rtabmap_pose_publisher.cpp
+
+#include <rclcpp/rclcpp.hpp>
+#include <rtabmap_msgs/msg/info.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
+using InfoMsg = rtabmap_msgs::msg::Info;
+using OdomMsg = nav_msgs::msg::Odometry;
+
+class PosePublisherNode : public rclcpp::Node
+{
+public:
+  PosePublisherNode()
+  : Node("rtabmap_pose_publisher"),
+    tf_buffer_(this->get_clock()),
+    tf_listener_(tf_buffer_)
+  {
+    // 파라미터로부터 프레임 ID 읽기
+    base_frame_id_ = this->declare_parameter<std::string>("base_frame_id", "zed_camera_link");
+    odom_frame_id_ = this->declare_parameter<std::string>("odom_frame_id", "odom");
+
+    info_sub_ = this->create_subscription<InfoMsg>(
+      "rtabmap/info", 10,
+      std::bind(&PosePublisherNode::infoCallback, this, std::placeholders::_1));
+
+    pose_pub_ = this->create_publisher<OdomMsg>(
+      "/aeirobot/robot_pose_odom", 10);
+
+    RCLCPP_INFO(this->get_logger(), "rtabmap_pose_publisher node started");
+  }
+
+private:
+  void infoCallback(const InfoMsg::SharedPtr msg)
+  {
+    // ---- 기존 루프클로징 신뢰성 로깅 ----
+    auto find_stat = [&](const std::string & key)->double {
+      for (size_t i = 0; i < msg->stats_keys.size(); ++i) {
+        if (msg->stats_keys[i] == key && i < msg->stats_values.size()) {
+          return msg->stats_values[i];
+        }
+      }
+      return NAN;
+    };
+    double vis_inliers  = find_stat("Loop/Visual_inliers/");
+    double vis_matches  = find_stat("Loop/Visual_matches/");
+    double inlier_ratio = find_stat("Loop/Visual_inliers_ratio/");
+    double hyp_ratio    = find_stat("Loop/Hypothesis_ratio/");
+
+    int best_id = 0;
+    float best_val = -1.0f;
+    for (size_t i = 0;
+         i < msg->posterior_keys.size() && i < msg->posterior_values.size();
+         ++i)
+    {
+      if (msg->posterior_values[i] > best_val) {
+        best_val = msg->posterior_values[i];
+        best_id  = msg->posterior_keys[i];
+      }
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+      "[Info #%d] matches=%.0f, inliers=%.0f, inlier_ratio=%.3f, hyp_ratio=%.3f, best_id=%d(%.3f)",
+      msg->ref_id, vis_matches, vis_inliers, inlier_ratio, hyp_ratio, best_id, best_val);
+
+    // ---- 루프클로징/근접탐지 시에만 map→zed_camera_link 전역 위치 퍼블리시 ----
+    if (msg->loop_closure_id > 0 || msg->proximity_detection_id > 0)
+    {
+      // 1) rtabmap/info 에서 준 map→odom 보정
+      const auto & m2o = msg->odom_cache.map_to_odom;
+      tf2::Transform tf_map_odom;
+      tf2::fromMsg(m2o, tf_map_odom);
+
+      // 2) TF 에서 odom→base_frame (zed_camera_link) 꺼내기
+      geometry_msgs::msg::TransformStamped o2b_tf;
+      try {
+        o2b_tf = tf_buffer_.lookupTransform(
+          odom_frame_id_,      // target: odom
+          base_frame_id_,      // source: zed_camera_link
+          msg->header.stamp,
+          rclcpp::Duration::from_seconds(0.1));
+      }
+      catch (tf2::TransformException & ex) {
+        RCLCPP_WARN(this->get_logger(),
+          "TF lookup odom→%s failed: %s",
+          base_frame_id_.c_str(), ex.what());
+        return;
+      }
+      tf2::Transform tf_odom_base;
+      tf2::fromMsg(o2b_tf.transform, tf_odom_base);
+
+      // 3) 합성: map→odom → odom→base = map→base
+      tf2::Transform tf_map_base = tf_map_odom * tf_odom_base;
+
+      // 4) Odometry 메시지로 퍼블리시
+      OdomMsg odom_msg;
+      odom_msg.header.stamp    = msg->header.stamp;
+      odom_msg.header.frame_id = msg->header.frame_id;  // map
+      odom_msg.child_frame_id  = base_frame_id_;
+
+      // 위치/자세 채우기
+      odom_msg.pose.pose.position.x  = tf_map_base.getOrigin().x();
+      odom_msg.pose.pose.position.y  = tf_map_base.getOrigin().y();
+      odom_msg.pose.pose.position.z  = tf_map_base.getOrigin().z();
+      odom_msg.pose.pose.orientation.x = tf_map_base.getRotation().x();
+      odom_msg.pose.pose.orientation.y = tf_map_base.getRotation().y();
+      odom_msg.pose.pose.orientation.z = tf_map_base.getRotation().z();
+      odom_msg.pose.pose.orientation.w = tf_map_base.getRotation().w();
+
+      // covariance 는 필요시 채우세요 (여기선 0 으로 초기화)
+      for (auto & c : odom_msg.pose.covariance) {
+        c = 0.0;
+      }
+
+      pose_pub_->publish(odom_msg);
+      RCLCPP_INFO(this->get_logger(),
+        "→ Published map→%s: x=%.3f, y=%.3f, z=%.3f",
+        base_frame_id_.c_str(),
+        odom_msg.pose.pose.position.x,
+        odom_msg.pose.pose.position.y,
+        odom_msg.pose.pose.position.z);
+    }
+  }
+
+  std::string base_frame_id_;
+  std::string odom_frame_id_;
+  rclcpp::Subscription<InfoMsg>::SharedPtr info_sub_;
+  rclcpp::Publisher<OdomMsg>::SharedPtr   pose_pub_;
+
+  tf2_ros::Buffer tf_buffer_;
+  tf2_ros::TransformListener tf_listener_;
+};
+
+int main(int argc, char ** argv)
+{
+  rclcpp::init(argc, argv);
+  auto node = std::make_shared<PosePublisherNode>();
+  rclcpp::spin(node);
+  rclcpp::shutdown();
+  return 0;
+}
