@@ -125,8 +125,8 @@ def launch_setup(context, *args, **kwargs):
                 'Kp/MaxDepth': '15.0',
                 "Mem/ImagePostDecimation": "2",   # 맵 저장할 때 이미지 다운스케일해서 저장함. 1: 원본, 2 3 4... 1/2 1/3 1/4로 다운스케일 하겠다
                 "Mem/ImagePreDecimation": "2",    # 실시간에서 이미지를 다운스케일해서 사용함. 1: 원본, 2 3 4... 1/2 1/3 1/4로 다운스케일 하겠다  
-                'SuperPoint/ModelPath': '/home/orin/vslam_ws/src/superpoint_v1.pt',
-                'PyMatcher/Path': '/home/orin/vslam_ws/src/SuperGluePretrainedNetwork/rtabmap_superglue.py',
+                'SuperPoint/ModelPath': '/home/orin/vslam_ws/src/alice_navigation/localization/feature_extractors/superpoint_v1.pt',
+                'PyMatcher/Path': '/home/orin/vslam_ws/src/alice_navigation/localization/feature_extractors/SuperGluePretrainedNetwork/rtabmap_superglue.py',
                 'Vis/CorGuessWinSize': '0',   # 기본값 40
                 'Vis/CorNNType': '6',   #  기본값은 1, kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, BruteForceCrossCheck=5, SuperGlue=6, GMS=7
                 'Reg/RepeatOnce': 'false',  # 기본값 true
