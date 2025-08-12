@@ -965,10 +965,10 @@ CoreWrapper::CoreWrapper(const rclcpp::NodeOptions & options) :
 	this->get_parameter("odom_correction", odomCorrectionEnabled_);
 	
 	// ② pelvis 초기 pose 토픽 구독
-    robotPoseInfoSub_ = this->create_subscription<alice4_localization_msgs::msg::PoseWithInfoStamped>(
-        "/aeirobot/localization/manager_pose",
-        aeirobot::qos_sensor_profile,
-        std::bind(&CoreWrapper::robotPoseInfoCallback, this, std::placeholders::_1));
+    // robotPoseInfoSub_ = this->create_subscription<alice4_localization_msgs::msg::PoseWithInfoStamped>(
+    //     "/aeirobot/localization/manager_pose",
+    //     aeirobot::qos_sensor_profile,
+    //     std::bind(&CoreWrapper::robotPoseInfoCallback, this, std::placeholders::_1));
 
 }
 
@@ -1002,72 +1002,72 @@ CoreWrapper::~CoreWrapper()
 	delete interOdomSync_;
 }
 
-void CoreWrapper::robotPoseInfoCallback(const alice4_localization_msgs::msg::PoseWithInfoStamped::SharedPtr msg)
-{
-	// --- 0) info 에 key: set_pose, value: true 인지 확인 ---
-    bool doOverride = false;
-    for(const auto &kv : msg->info)
-    {
-        if(kv.key == "set_pose" && kv.value == "true")
-        {
-            doOverride = true;
-            break;
-        }
-    }
-    if(!doOverride)
-    {
-        RCLCPP_DEBUG(this->get_logger(), "robot_pose_info received, but set_pose!=true → override skip");
-        return;
-    }
+// void CoreWrapper::robotPoseInfoCallback(const alice4_localization_msgs::msg::PoseWithInfoStamped::SharedPtr msg)
+// {
+// 	// --- 0) info 에 key: set_pose, value: true 인지 확인 ---
+//     bool doOverride = false;
+//     for(const auto &kv : msg->info)
+//     {
+//         if(kv.key == "set_pose" && kv.value == "true")
+//         {
+//             doOverride = true;
+//             break;
+//         }
+//     }
+//     if(!doOverride)
+//     {
+//         RCLCPP_DEBUG(this->get_logger(), "robot_pose_info received, but set_pose!=true → override skip");
+//         return;
+//     }
 
-    // --- 1) odom_frame → pelvis_waist TF 읽기 ---
-    std::string odomFrame = odomFrameId_.empty() ? frameId_ : odomFrameId_;
-    geometry_msgs::msg::TransformStamped odom2pelvis_msg;
-    try {
-        odom2pelvis_msg = tfBuffer_->lookupTransform(
-            odomFrame,
-            "pelvis_waist",
-            msg->header.stamp,
-            rclcpp::Duration::from_seconds(waitForTransform_));
-    } catch (tf2::TransformException & e) {
-        RCLCPP_WARN(this->get_logger(), "pelvis_waist TF lookup failed: %s", e.what());
-        return;
-    }
-    // tf2 변환 객체로
-    tf2::Transform odom2pelvis;
-    tf2::fromMsg(odom2pelvis_msg.transform, odom2pelvis);
+//     // --- 1) odom_frame → pelvis_waist TF 읽기 ---
+//     std::string odomFrame = odomFrameId_.empty() ? frameId_ : odomFrameId_;
+//     geometry_msgs::msg::TransformStamped odom2pelvis_msg;
+//     try {
+//         odom2pelvis_msg = tfBuffer_->lookupTransform(
+//             odomFrame,
+//             "pelvis_waist",
+//             msg->header.stamp,
+//             rclcpp::Duration::from_seconds(waitForTransform_));
+//     } catch (tf2::TransformException & e) {
+//         RCLCPP_WARN(this->get_logger(), "pelvis_waist TF lookup failed: %s", e.what());
+//         return;
+//     }
+//     // tf2 변환 객체로
+//     tf2::Transform odom2pelvis;
+//     tf2::fromMsg(odom2pelvis_msg.transform, odom2pelvis);
 
-    // --- 2) existing pelvis_waist z, roll, pitch 추출 ---
-    double z = odom2pelvis.getOrigin().z();
-    tf2::Matrix3x3 mat(odom2pelvis.getRotation());
-    double roll, pitch, yaw_tmp;
-    mat.getRPY(roll, pitch, yaw_tmp);
+//     // --- 2) existing pelvis_waist z, roll, pitch 추출 ---
+//     double z = odom2pelvis.getOrigin().z();
+//     tf2::Matrix3x3 mat(odom2pelvis.getRotation());
+//     double roll, pitch, yaw_tmp;
+//     mat.getRPY(roll, pitch, yaw_tmp);
 
-    // --- 3) 2D msg→3D tf 생성 (map→pelvis_waist) ---
-    tf2::Transform map2pelvis;
-    map2pelvis.setOrigin(tf2::Vector3(msg->pose.x, msg->pose.y, z));
-    tf2::Quaternion q;
-    q.setRPY(roll, pitch, msg->pose.theta);
-    map2pelvis.setRotation(q);
+//     // --- 3) 2D msg→3D tf 생성 (map→pelvis_waist) ---
+//     tf2::Transform map2pelvis;
+//     map2pelvis.setOrigin(tf2::Vector3(msg->pose.x, msg->pose.y, z));
+//     tf2::Quaternion q;
+//     q.setRPY(roll, pitch, msg->pose.theta);
+//     map2pelvis.setRotation(q);
 
-    // --- 4) map→odom 보정 계산 ---
-    // map→odom = (map→pelvis) * (odom→pelvis)⁻¹
-    tf2::Transform map2odom_tf = map2pelvis * odom2pelvis.inverse();
+//     // --- 4) map→odom 보정 계산 ---
+//     // map→odom = (map→pelvis) * (odom→pelvis)⁻¹
+//     tf2::Transform map2odom_tf = map2pelvis * odom2pelvis.inverse();
 
-    // --- 5) rtabmap이 쓰는 형식으로 변환해 저장 ---
-    {
-        std::lock_guard<std::mutex> lock(mapToOdomMutex_);
-        mapToOdom_ = rtabmap_conversions::transformFromTF(map2odom_tf);
-    }
+//     // --- 5) rtabmap이 쓰는 형식으로 변환해 저장 ---
+//     {
+//         std::lock_guard<std::mutex> lock(mapToOdomMutex_);
+//         mapToOdom_ = rtabmap_conversions::transformFromTF(map2odom_tf);
+//     }
 
-    RCLCPP_INFO(this->get_logger(),
-        "[pelvis penalty/init] map→odom correction set: x=%.2f y=%.2f θ=%.2f",
-        msg->pose.x, msg->pose.y, msg->pose.theta);
+//     RCLCPP_INFO(this->get_logger(),
+//         "[pelvis penalty/init] map→odom correction set: x=%.2f y=%.2f θ=%.2f",
+//         msg->pose.x, msg->pose.y, msg->pose.theta);
 
-	// override 상태 활성화
-    pendingPelvisOverride_ = true;
-	pelvisOverrideActive_  = true;
-}
+// 	// override 상태 활성화
+//     pendingPelvisOverride_ = true;
+// 	pelvisOverrideActive_  = true;
+// }
 
 void CoreWrapper::loadParameters(const std::string & configFile, ParametersMap & parameters)
 {
@@ -2398,15 +2398,6 @@ void CoreWrapper::process(
 			        mapToOdom_ = rtabmap_.getMapCorrection();
 			    }
 			}
-
-			// 수정한 코드 시작 
-			// if(odomCorrectionEnabled_)
-			// {
-			//     // true일 때만 루프클로징 보정 적용
-			// 	std::cout << "보정해버려잉~" << std::endl;
-			//     mapToOdom_ = rtabmap_.getMapCorrection();
-			// }
-			// 수정한 코드 끝
 
 			Transform mapToOdomSafe = mapToOdom_.clone();
 			if(!odomFrameId.empty() && !odomFrameId_.empty() && odomFrameId_.compare(odomFrameId)!=0)
