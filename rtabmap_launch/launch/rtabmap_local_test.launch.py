@@ -121,12 +121,12 @@ def launch_setup(context, *args, **kwargs):
                 'Kp/DetectorStrategy':'11',  # "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector"
                 'Vis/FeatureType':'11',      # "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector"
                 'Vis/MaxFeatures': '500',     # 기본값 1000
-                'ORB/Gpu': 'true',
+                'ORB/Gpu': 'false',
                 'Kp/MaxDepth': '15.0',
                 "Mem/ImagePostDecimation": "2",   # 맵 저장할 때 이미지 다운스케일해서 저장함. 1: 원본, 2 3 4... 1/2 1/3 1/4로 다운스케일 하겠다
                 "Mem/ImagePreDecimation": "2",    # 실시간에서 이미지를 다운스케일해서 사용함. 1: 원본, 2 3 4... 1/2 1/3 1/4로 다운스케일 하겠다  
-                'SuperPoint/ModelPath': '/home/orin/vslam_ws/src/alice_navigation/localization/feature_extractors/superpoint_v1.pt',
-                'PyMatcher/Path': '/home/orin/vslam_ws/src/alice_navigation/localization/feature_extractors/SuperGluePretrainedNetwork/rtabmap_superglue.py',
+                'SuperPoint/ModelPath': '/home/orin/vslam_ws/src/superpoint_v1.pt',
+                'PyMatcher/Path': '/home/orin/vslam_ws/src/SuperGluePretrainedNetwork/rtabmap_superglue.py',
                 'Vis/CorGuessWinSize': '0',   # 기본값 40
                 'Vis/CorNNType': '6',   #  기본값은 1, kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, BruteForceCrossCheck=5, SuperGlue=6, GMS=7
                 'Reg/RepeatOnce': 'false',  # 기본값 true
@@ -144,7 +144,7 @@ def launch_setup(context, *args, **kwargs):
                 'PyMatcher/Iterations': '40',     # 기본값 20
                 'PyMatcher/Threshold': '0.15',     # 기본값 0.2
                 
-                'PyMatcher/Model': 'outdoor',      # indoor outdoor
+                'PyMatcher/Model': 'indoor',      # indoor outdoor
             }],
             remappings=[
                 ("map", LaunchConfiguration('map_topic')),
@@ -194,22 +194,22 @@ def launch_setup(context, *args, **kwargs):
         
         
         ### vslam 결과 publish 해주는 노드 -> localization manager로 넘길 데이터
-        Node(
-            package='rtabmap_pose_publisher', 
-            executable='rtabmap_pose_publisher', 
-            name='rtabmap_pose_publisher',
-            output='screen',
-            parameters=[{
-                "correction_base_frame_id": LaunchConfiguration('correction_base_frame_id'),
-                "correction_odom_frame_id": LaunchConfiguration('correction_odom_frame_id'),
-                'min_loop_score': LaunchConfiguration('min_loop_score'),
-                'info_topic': LaunchConfiguration('info_topic'),
-                'zed_odom_topic': LaunchConfiguration('zed_odom_topic'),
-                'map_to_odom_topic': LaunchConfiguration('map_to_odom_topic'),
-                'global_pose_topic': LaunchConfiguration('global_pose_topic'),
-                }],
-            ),
-        SetEnvironmentVariable('RCUTILS_COLORIZED_OUTPUT', '1')
+        # Node(
+        #     package='rtabmap_pose_publisher', 
+        #     executable='rtabmap_pose_publisher', 
+        #     name='rtabmap_pose_publisher',
+        #     output='screen',
+        #     parameters=[{
+        #         "correction_base_frame_id": LaunchConfiguration('correction_base_frame_id'),
+        #         "correction_odom_frame_id": LaunchConfiguration('correction_odom_frame_id'),
+        #         'min_loop_score': LaunchConfiguration('min_loop_score'),
+        #         'info_topic': LaunchConfiguration('info_topic'),
+        #         'zed_odom_topic': LaunchConfiguration('zed_odom_topic'),
+        #         'map_to_odom_topic': LaunchConfiguration('map_to_odom_topic'),
+        #         'global_pose_topic': LaunchConfiguration('global_pose_topic'),
+        #         }],
+        #     ),
+        # SetEnvironmentVariable('RCUTILS_COLORIZED_OUTPUT', '1')
         ]
 
 def generate_launch_description():
@@ -231,13 +231,13 @@ def generate_launch_description():
         DeclareLaunchArgument('extend_map', default_value='false', description='LTM 데이터를 모두 WM로 불러온 상태로 추가 맵핑 진행'),
         
         ## GUI ON / OFF
-        DeclareLaunchArgument('rtabmap_viz',  default_value='false',  description='Launch RTAB-Map UI (optional).'),
+        DeclareLaunchArgument('rtabmap_viz',  default_value='true',  description='Launch RTAB-Map UI (optional).'),
         DeclareLaunchArgument('rviz',         default_value='false', description='Launch RVIZ (optional).'),
 
         ## odom tf 보정 할지말지 변수
         DeclareLaunchArgument('odom_correction', default_value='true', description='loop closing 상황에서 odom tf 옮길건지 말건지 선택하는 변수'),
         
-        ### rtabmap_pose_publisher에서 사용하는 변수 ###
+        ### rtabmap_pose_publisher에서 사용하는 변수 ###  !!! rtabmap_pose_publisher에서 안켜면 파라미터 무시해도 됨!!!!! 
         DeclareLaunchArgument('correction_base_frame_id', default_value='pelvis_waist',                            description='localization manager에 vslam 결과 보내주는 용'),
         DeclareLaunchArgument('correction_odom_frame_id', default_value='odom',                                    description='localization manager에 vslam 결과 보내주는 용'),
         DeclareLaunchArgument('min_loop_score',           default_value='0.4',                                     description='루프 클로징 했을 때 local manager로 보내주기 위한 최소 점수, 해당 점수보다 낮으면 루프 클로징 되어도 무시됨'),
@@ -258,16 +258,16 @@ def generate_launch_description():
         DeclareLaunchArgument('gui_cfg',  default_value='~/.ros/rtabmap_gui.ini',  description='Configuration path of rtabmap_viz.'),
         DeclareLaunchArgument('rviz_cfg', default_value=config_rviz,               description='Configuration path of rviz2.'),
 
-        DeclareLaunchArgument('frame_id',       default_value='pelvis_waist',          description='zed_camera_link  tracker'),
+        DeclareLaunchArgument('frame_id',       default_value='base_footprint',          description='zed_camera_link  tracker'),
         DeclareLaunchArgument('odom_frame_id',  default_value='odom',                   description='If set, TF is used to get odometry instead of the topic.'),
         DeclareLaunchArgument('map_frame_id',   default_value='map',                description='Output map frame id (TF).'),
         DeclareLaunchArgument('map_topic',      default_value='map',                description='Map topic name.'),
         DeclareLaunchArgument('publish_tf_map', default_value='true',               description='Publish TF between map and odomerty.'),
         DeclareLaunchArgument('namespace',      default_value='rtabmap',            description=''),
-        DeclareLaunchArgument('database_path',  default_value='~/.ros/mapping/alicev2.db',  description='Where is the map saved/loaded.'),
+        DeclareLaunchArgument('database_path',  default_value='~/.ros/mapping/alice_v1.db',  description='Where is the map saved/loaded.'),
         DeclareLaunchArgument('topic_queue_size', default_value='1',                description='Queue size of individual topic subscribers.'),
         DeclareLaunchArgument('queue_size',     default_value='10',                 description='Backward compatibility, use "sync_queue_size" instead.'),
-        DeclareLaunchArgument('qos',            default_value='2',                  description='General QoS used for sensor input data: 0=system default, 1=Reliable, 2=Best Effort.'),
+        DeclareLaunchArgument('qos',            default_value='1',                  description='General QoS used for sensor input data: 0=system default, 1=Reliable, 2=Best Effort.'),
         DeclareLaunchArgument('wait_for_transform', default_value='0.2',            description='0.2'),
         DeclareLaunchArgument('rtabmap_args',   default_value='',                   description='Backward compatibility, use "args" instead.'),
         DeclareLaunchArgument('launch_prefix',  default_value='',                   description='For debugging purpose, it fills prefix tag of the nodes, e.g., "xterm -e gdb -ex run --args"'),
@@ -302,10 +302,10 @@ def generate_launch_description():
         DeclareLaunchArgument('rgb_image_transport',   default_value='compressed', description='Common types: compressed, theora (see "rosrun image_transport list_transports")'),
         DeclareLaunchArgument('depth_image_transport', default_value='compressedDepth', description='Depth compatible types: compressedDepth (see "rosrun image_transport list_transports")'),
        
-        # Odometry
+        # Odometry  /odometry/filtered  /aeirobot/alice_mobile/odom
         DeclareLaunchArgument('visual_odometry',            default_value='false',  description='Launch rtabmap visual odometry node.'),
         DeclareLaunchArgument('icp_odometry',               default_value='false', description='Launch rtabmap icp odometry node.'),
-        DeclareLaunchArgument('odom_topic',                 default_value='/zed_odom',  description='Odometry topic name., /zed_odom '),
+        DeclareLaunchArgument('odom_topic',                 default_value='/odometry/filtered',  description='Odometry topic name., /zed_odom '),
         DeclareLaunchArgument('vo_frame_id',                default_value=LaunchConfiguration('odom_topic'), description='Visual/Icp odometry frame ID for TF.'),
         DeclareLaunchArgument('publish_tf_odom',            default_value='false',  description=''),
         DeclareLaunchArgument('odom_tf_angular_variance',   default_value='0.01',    description='If TF is used to get odometry, this is the default angular variance'),
@@ -317,7 +317,7 @@ def generate_launch_description():
         DeclareLaunchArgument('odom_guess_min_rotation',    default_value='0.0',   description=''),
         
         # imu
-        DeclareLaunchArgument('imu_topic',        default_value='/zed_imu', description='Used with VIO approaches and for SLAM graph optimization (gravity constraints).'),
+        DeclareLaunchArgument('imu_topic',        default_value='/imu/data_raw', description='Used with VIO approaches and for SLAM graph optimization (gravity constraints).'),
         DeclareLaunchArgument('wait_imu_to_init', default_value='false',     description=''),
                
         OpaqueFunction(function=launch_setup)
