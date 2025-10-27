@@ -145,6 +145,18 @@ def launch_setup(context, *args, **kwargs):
                 'PyMatcher/Threshold': '0.15',     # 기본값 0.2
                 
                 'PyMatcher/Model': 'indoor',      # indoor outdoor
+                
+                ## 아르코 마커 ##
+                # 'Marker/Length': "0.063",
+                # "Marker/CornerRefinementMethod": "1",
+                # "Marker/Dictionary": "20",
+                # "Marker/MaxDepthError": "0.02",
+                # "Marker/Priors": "4 0.6 0.55 0.25 0 0 0",
+                # "Marker/PriorsVarianceAngular": "0.5",
+                # "Marker/PriorsVarianceLinear": "0.5",
+                # "Marker/VarianceAngular": "0.2",
+                # "Marker/VarianceLinear": "0.02",
+                # "RGBD/MarkerDetection": "true",
             }],
             remappings=[
                 ("map", LaunchConfiguration('map_topic')),
@@ -231,7 +243,7 @@ def generate_launch_description():
         DeclareLaunchArgument('extend_map', default_value='false', description='LTM 데이터를 모두 WM로 불러온 상태로 추가 맵핑 진행'),
         
         ## GUI ON / OFF
-        DeclareLaunchArgument('rtabmap_viz',  default_value='true',  description='Launch RTAB-Map UI (optional).'),
+        DeclareLaunchArgument('rtabmap_viz',  default_value='false',  description='Launch RTAB-Map UI (optional).'),
         DeclareLaunchArgument('rviz',         default_value='false', description='Launch RVIZ (optional).'),
 
         ## odom tf 보정 할지말지 변수
@@ -264,10 +276,10 @@ def generate_launch_description():
         DeclareLaunchArgument('map_topic',      default_value='map',                description='Map topic name.'),
         DeclareLaunchArgument('publish_tf_map', default_value='true',               description='Publish TF between map and odomerty.'),
         DeclareLaunchArgument('namespace',      default_value='rtabmap',            description=''),
-        DeclareLaunchArgument('database_path',  default_value='~/.ros/mapping/alice_v1.db',  description='Where is the map saved/loaded.'),
+        DeclareLaunchArgument('database_path',  default_value='~/.ros/mapping/alice_v4.db',  description='Where is the map saved/loaded.'),
         DeclareLaunchArgument('topic_queue_size', default_value='1',                description='Queue size of individual topic subscribers.'),
         DeclareLaunchArgument('queue_size',     default_value='10',                 description='Backward compatibility, use "sync_queue_size" instead.'),
-        DeclareLaunchArgument('qos',            default_value='1',                  description='General QoS used for sensor input data: 0=system default, 1=Reliable, 2=Best Effort.'),
+        DeclareLaunchArgument('qos',            default_value='2',                  description='General QoS used for sensor input data: 0=system default, 1=Reliable, 2=Best Effort.'),
         DeclareLaunchArgument('wait_for_transform', default_value='0.2',            description='0.2'),
         DeclareLaunchArgument('rtabmap_args',   default_value='',                   description='Backward compatibility, use "args" instead.'),
         DeclareLaunchArgument('launch_prefix',  default_value='',                   description='For debugging purpose, it fills prefix tag of the nodes, e.g., "xterm -e gdb -ex run --args"'),
