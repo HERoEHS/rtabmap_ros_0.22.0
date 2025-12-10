@@ -11,6 +11,8 @@ find_package(rtabmap_conversions REQUIRED)
 find_package(rtabmap_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(diagnostic_updater REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)  # ← 이 줄 추가
+
 
 option(RTABMAP_SYNC_MULTI_RGBD "Build with multi RGBD camera synchronization support"  OFF)
 option(RTABMAP_SYNC_USER_DATA "Build with input user data support"  OFF)
@@ -51,6 +53,7 @@ SET(Libraries
    rtabmap_msgs
    sensor_msgs
    diagnostic_updater
+   Boost
 )
 
 ###########

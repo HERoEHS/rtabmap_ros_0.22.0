@@ -18,6 +18,7 @@ find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(tf2_geometry_msgs REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)  # ← 이 줄 추가
 
 find_package(RTABMap 0.22.0 REQUIRED)
 
@@ -40,6 +41,7 @@ SET(Libraries
    tf2_eigen
    tf2_geometry_msgs
    RTABMap
+   Boost
 )
 
 if("$ENV{ROS_DISTRO}" STRLESS "humble")

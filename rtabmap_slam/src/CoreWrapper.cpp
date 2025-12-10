@@ -309,6 +309,12 @@ CoreWrapper::CoreWrapper(const rclcpp::NodeOptions & options) :
 	globalPathNodesPub_ = this->create_publisher<rtabmap_msgs::msg::Path>("global_path_nodes", 1);
 	localPathNodesPub_ = this->create_publisher<rtabmap_msgs::msg::Path>("local_path_nodes", 1);
 
+	// 도킹 정보 subscribe
+	docking_state_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+		"/aeirobot/block_odom_correction",
+		10,
+		std::bind(&CoreWrapper::dockingStateCallback, this, std::placeholders::_1));
+
 	configPath_ = uReplaceChar(configPath_, '~', UDirectory::homeDir());
 	databasePath_ = uReplaceChar(databasePath_, '~', UDirectory::homeDir());
 #ifndef _WIN32
@@ -2368,7 +2374,7 @@ void CoreWrapper::process(
 			// mapToOdom_ = rtabmap_.getMapCorrection();
 			// 원본 코드 끝
 
-			if(odomCorrectionEnabled_)
+			if(odomCorrectionEnabled_ && !docking_state_)
 			{
 			    // 1) 루프 클로징이 감지되면 무조건 override 해제
 			    if(rtabmap_.getStatistics().loopClosureId() != 0 || rtabmap_.getStatistics().proximityDetectionId() != 0)
@@ -2855,6 +2861,20 @@ void CoreWrapper::imuAsyncCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
 				imuFrameId_ = msg->header.frame_id;
 			}
 		}
+	}
+}
+
+void CoreWrapper::dockingStateCallback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+	docking_state_ = msg->data;
+
+	if(docking_state_)
+	{
+		RCLCPP_INFO(get_logger(), "Docking state: ACTIVE (true)");
+	}
+	else
+	{
+		RCLCPP_INFO(get_logger(), "Docking state: INACTIVE (false)");
 	}
 }
 

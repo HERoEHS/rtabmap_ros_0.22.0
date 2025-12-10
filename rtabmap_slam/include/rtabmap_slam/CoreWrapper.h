@@ -129,6 +129,7 @@ private:
 	bool odomCorrectionEnabled_;
 	bool pendingPelvisOverride_;
 	bool pelvisOverrideActive_ = false;
+	bool docking_state_ = false;
 
 	// ① pelvis 초기 pose 수신용
     // rclcpp::Subscription<alice4_localization_msgs::msg::PoseWithInfoStamped>::SharedPtr robotPoseInfoSub_;
@@ -235,6 +236,9 @@ private:
 			const std::map<int, rtabmap::Transform> & nodes,
 			const rtabmap::Transform & currentPose);
 
+	// 도킹 state 콜백
+	void dockingStateCallback(const std_msgs::msg::Bool::SharedPtr msg);
+
 	void updateRtabmapCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
 	void resetRtabmapCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
 	void pauseRtabmapCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
@@ -266,7 +270,7 @@ private:
 	void removeLabelCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::RemoveLabel::Request>, std::shared_ptr<rtabmap_msgs::srv::RemoveLabel::Response> res);
 	void addLinkCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::AddLink::Request>, std::shared_ptr<rtabmap_msgs::srv::AddLink::Response> res);
 	void getNodesInRadiusCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::GetNodesInRadius::Request>, std::shared_ptr<rtabmap_msgs::srv::GetNodesInRadius::Response> res);
-
+	
 #ifdef WITH_OCTOMAP_MSGS
 	void octomapBinaryCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<octomap_msgs::srv::GetOctomap::Request>, std::shared_ptr<octomap_msgs::srv::GetOctomap::Response>);
 	void octomapFullCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<octomap_msgs::srv::GetOctomap::Request>, std::shared_ptr<octomap_msgs::srv::GetOctomap::Response>);
@@ -342,6 +346,9 @@ private:
 	std::mutex mapToOdomMutex_;
 
 	rtabmap_util::MapsManager mapsManager_;
+	
+	// docking state sub 선언
+	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr docking_state_sub_;
 
 	rclcpp::Publisher<rtabmap_msgs::msg::Info>::SharedPtr infoPub_;
 	rclcpp::Publisher<rtabmap_msgs::msg::MapData>::SharedPtr mapDataPub_;

@@ -122,29 +122,35 @@ def launch_setup(context, *args, **kwargs):
                 'Vis/FeatureType':'11',      # "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector"
                 'Vis/MaxFeatures': '500',     # 기본값 1000
                 'ORB/Gpu': 'false',
-                'Kp/MaxDepth': '15.0',
                 "Mem/ImagePostDecimation": "2",   # 맵 저장할 때 이미지 다운스케일해서 저장함. 1: 원본, 2 3 4... 1/2 1/3 1/4로 다운스케일 하겠다
                 "Mem/ImagePreDecimation": "2",    # 실시간에서 이미지를 다운스케일해서 사용함. 1: 원본, 2 3 4... 1/2 1/3 1/4로 다운스케일 하겠다  
-                'SuperPoint/ModelPath': '/home/orin/vslam_ws/src/superpoint_v1.pt',
-                'PyMatcher/Path': '/home/orin/vslam_ws/src/SuperGluePretrainedNetwork/rtabmap_superglue.py',
+                'SuperPoint/ModelPath': '/home/orin/nav_ws/src/alice_navigation/localization/feature_extractors/superpoint_v1.pt',
+                'PyMatcher/Path': '/home/orin/nav_ws/src/alice_navigation/localization/feature_extractors/SuperGluePretrainedNetwork/rtabmap_superglue.py',
                 'Vis/CorGuessWinSize': '0',   # 기본값 40
                 'Vis/CorNNType': '6',   #  기본값은 1, kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, BruteForceCrossCheck=5, SuperGlue=6, GMS=7
                 'Reg/RepeatOnce': 'false',  # 기본값 true
                 'Vis/DepthMaskFloorThr': '0.4',   # 뎁스값 추정해서 바닥은 필터링해서 없애는 거 ...아직 잘 모르겠음ㅠ
                 'Kp/MaxFeatures': '500',
-                'Mem/STMSize': '15',               # 10 -> 맵핑할 때 WM의 최소 갯수를 의미함. 10개 이상 모여야 루프 클로징 시작
                 'Mem/RehearsalSimilarity': '0.6',  # 0.6
                 'RGBD/OptimizeMaxError': '0.0',    # 기본값: 3.0 | OptimizeMaxError, Robust 는 서로 상반된 파라미터임, OptimizeMaxError 값이 있으면 Robust는 false, OptimizeMaxError = 0.0이면 Robust는 true 가능
                 'Optimizer/Robust': 'true',        # 기본값: false | OptimizeMaxError 표준편차 기준으로 그래프에서 멀리 떨어진 루프 클로징을 거절함 -> 빠르다. Robust는 0~1까지의 가중치를 계산해서 루프 클로징을 거절 또는 수락함.-> 느리지만 공장,복도와 같은 대규모 장소에 적합.
-                'Rtabmap/DetectionRate': '2',     # 기본값 1, 루프 클로징 rate를 의미 단위[Hz]
+                'Rtabmap/DetectionRate': '1',     # 기본값 1, 루프 클로징 rate를 의미 단위[Hz]
+                'Kp/MaxDepth': '5.0',             # 특징점 최대 거리
 
                 ## 레전드 파라미터 ##
                 'SuperPoint/Threshold': '0.005',    # 기본값 0.010
                 'SuperPoint/NMSRadius': '2',      # 기본값 4
                 'PyMatcher/Iterations': '40',     # 기본값 20
                 'PyMatcher/Threshold': '0.15',     # 기본값 0.2
-                
                 'PyMatcher/Model': 'indoor',      # indoor outdoor
+                
+                # ## 오인 루프 클로징을 줄이기 위한 파라미터 ##
+                # 'Rtabmap/LoopThr': '0.11',                # ↑ 더 엄격한 장소인식
+                # 'Mem/STMSize': '30',                     # ↑ 바로 직전 노드 루프 완화
+                # 'Vis/MinInliers': '12',                  # ↑ PnP 인라이어 최소치
+                # 'Vis/MinInliersDistribution': '0.0',     # ↑ 한쪽 몰림 거절
+                # 'RGBD/OptimizeFromGraphEnd': 'true',     # (옵션) 맵 프레임 안정화에 도움
+                # 'RGBD/SavedLocalizationIgnored': 'true', # (옵션) 붙기 전까지 맵 미발행
                 
                 ## 아르코 마커 ##
                 # 'Marker/Length': "0.063",
