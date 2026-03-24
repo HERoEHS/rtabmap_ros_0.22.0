@@ -5,6 +5,11 @@
 
 import os
 
+# ROS_WS 환경변수 기반 경로 설정
+ROS_WS = os.environ.get('ROS_WS', os.path.expanduser('~/revision_daim_ws'))
+SLAM_MANAGER_CONFIG = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'rtabmap_slam_manager', 'config')
+FEATURE_EXTRACTORS = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'feature_extractors')
+
 from launch import LaunchDescription, Substitution, LaunchContext
 from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable, LogInfo, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, ThisLaunchFileDir, PythonExpression
@@ -113,7 +118,45 @@ def launch_setup(context, *args, **kwargs):
     
                 'Mem/RecentWmRatio': '0.3',   # 기본값 0.2, 마지막 루프 클로징을 기준으로 WM에 20%만 냅두고 나머지는 LTM으로 옮기겠다는 의미, LTM으로 들어가면 해당 노드는 루프 클로징에 사용되지 않음. -> 수십GB급 맵 데이터에서도 실시간성 유지를 위해 0.2였던 것, 테스트 해보면서 값 조절하기
                 "odom_correction": LaunchConfiguration('odom_correction'),
-                # "Grid/MaxObstacleHeight": "0.9",
+                # ============================================================
+                # Grid Map 높이 필터링 파라미터 (바닥면 제거용)
+                # ============================================================
+                # 포인트클라우드에서 이 높이(m) 미만의 점은 완전히 버림.
+                # 바닥 반사, depth 카메라 노이즈 등 바닥 아래로 찍히는 허위 포인트 제거용.
+                # 튜닝: 센서가 바닥에서 얼마나 높은지 기준으로, 바닥면 바로 아래 값을 설정.
+                #        너무 높이면 실제 낮은 장애물(문턱 등)도 같이 사라지므로 주의.
+                'Grid/MinGroundHeight': '0.0',
+
+                # z <= 이 값(m)인 포인트는 "바닥"으로 분류되어 장애물 맵에 안 찍힘.
+                # 튜닝: 로봇 base_link 기준 바닥 높이 + 약간의 마진(0.03~0.10m).
+                #        값이 너무 크면 낮은 장애물까지 바닥으로 무시하고,
+                #        너무 작으면 바닥 노이즈가 장애물로 찍힘.
+                'Grid/MaxGroundHeight': '0.05',
+
+                # z > 이 값(m)인 포인트는 완전히 버림 (천장, 높은 선반 등 제거).
+                # 튜닝: 로봇이 통과할 수 없는 높이 이상을 설정. 보통 0.8~1.5m.
+                'Grid/MaxObstacleHeight': '1.0',
+
+                # false: 노말 계산 없이 순수 z 높이만으로 바닥/장애물 분류 (빠르고 단순).
+                # true:  포인트 노말 벡터로 바닥 평면을 추정 (울퉁불퉁한 지형에 적합하나 느림).
+                # 평평한 실내 환경에서는 false 추천.
+                'Grid/NormalsSegmentation': 'false',
+
+                # true: 센서→포인트 방향으로 레이트레이싱하여 빈 공간을 free로 채움.
+                # 맵에 unknown(회색) 영역이 줄어들고 훨씬 깔끔해짐. 다만 연산량 약간 증가.
+                'Grid/RayTracing': 'true',
+
+                # 그리드 셀 크기(m). 작을수록 정밀하지만 노이즈 민감 & 메모리 증가.
+                # 튜닝: 0.05(5cm)가 nav2 기본값. 넓은 공간이면 0.1도 가능.
+                # 'Grid/CellSize': '0.05',
+
+                # 이 거리(m) 이상의 포인트는 버림. depth 카메라는 먼 거리에서 정확도가 떨어지므로 제한.
+                # 튜닝: 사용하는 depth 카메라의 유효 측정 거리에 맞춰 설정.
+                # 'Grid/RangeMax': '5.0',
+
+                # 이 거리(m) 이내의 포인트는 버림. 너무 가까운 depth 노이즈 제거.
+                # 'Grid/RangeMin': '0.3',
+
                 'Grid/3D': "false",  # 2D Occupancy Grid 활성화
                 "Reg/Force3DoF": "true",
                 'RGBD/ForceOdom3DoF': 'true',      # VO 추정 z/roll/pitch 를 0으로 강제 => 기본값은 true
@@ -124,12 +167,12 @@ def launch_setup(context, *args, **kwargs):
                 'ORB/Gpu': 'false',
                 "Mem/ImagePostDecimation": "2",   # 맵 저장할 때 이미지 다운스케일해서 저장함. 1: 원본, 2 3 4... 1/2 1/3 1/4로 다운스케일 하겠다
                 "Mem/ImagePreDecimation": "2",    # 실시간에서 이미지를 다운스케일해서 사용함. 1: 원본, 2 3 4... 1/2 1/3 1/4로 다운스케일 하겠다  
-                'SuperPoint/ModelPath': '/home/orin/daim_ws/src/alice_navigation/localization/feature_extractors/superpoint_v1.pt',
-                'PyMatcher/Path': '/home/orin/daim_ws/src/alice_navigation/localization/feature_extractors/SuperGluePretrainedNetwork/rtabmap_superglue.py',
+                'SuperPoint/ModelPath': os.path.join(FEATURE_EXTRACTORS, 'superpoint_v1.pt'),
+                'PyMatcher/Path': os.path.join(FEATURE_EXTRACTORS, 'SuperGluePretrainedNetwork', 'rtabmap_superglue.py'),
                 'Vis/CorGuessWinSize': '0',   # 기본값 40
                 'Vis/CorNNType': '6',   #  기본값은 1, kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, BruteForceCrossCheck=5, SuperGlue=6, GMS=7
                 'Reg/RepeatOnce': 'false',  # 기본값 true
-                'Vis/DepthMaskFloorThr': '0.4',   # 뎁스값 추정해서 바닥은 필터링해서 없애는 거 ...아직 잘 모르겠음ㅠ
+                # 'Vis/DepthMaskFloorThr': '0.4',   # 뎁스값 추정해서 바닥은 필터링해서 없애는 거 ...아직 잘 모르겠음ㅠ
                 'Kp/MaxFeatures': '500',
                 'Mem/RehearsalSimilarity': '0.6',  # 0.6
                 'RGBD/OptimizeMaxError': '0.0',    # 기본값: 3.0 | OptimizeMaxError, Robust 는 서로 상반된 파라미터임, OptimizeMaxError 값이 있으면 Robust는 false, OptimizeMaxError = 0.0이면 Robust는 true 가능
@@ -283,7 +326,8 @@ def generate_launch_description():
         DeclareLaunchArgument('map_topic',      default_value='map',                description='Map topic name.'),
         DeclareLaunchArgument('publish_tf_map', default_value='true',               description='Publish TF between map and odomerty.'),
         DeclareLaunchArgument('namespace',      default_value='rtabmap',            description=''),
-        DeclareLaunchArgument('database_path',  default_value='~/.ros/mapping/daim_v1.db',  description='Where is the map saved/loaded.'),
+        # database_path 기본값을 config/ 디렉토리로 변경 (GUI 맵 관리와 동일 경로 사용)
+        DeclareLaunchArgument('database_path',  default_value=os.path.join(SLAM_MANAGER_CONFIG, 'daim_v1.db'),  description='Where is the map saved/loaded.'),
         DeclareLaunchArgument('topic_queue_size', default_value='1',                description='Queue size of individual topic subscribers.'),
         DeclareLaunchArgument('queue_size',     default_value='10',                 description='Backward compatibility, use "sync_queue_size" instead.'),
         DeclareLaunchArgument('qos',            default_value='2',                  description='General QoS used for sensor input data: 0=system default, 1=Reliable, 2=Best Effort.'),
