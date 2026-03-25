@@ -3,7 +3,7 @@
 #
 # 기존 rtabmap_local_test.launch.py와의 차이점:
 #   1. localization/extend_map argument 제거 → 항상 매핑 모드로 시작
-#   2. Mem/IncrementalMemory: "true", Mem/InitWMWithAllNodes: "false" 고정
+#   2. 기본 localization 모드: Mem/IncrementalMemory: "false", Mem/InitWMWithAllNodes: "true"
 #   3. GUI (SLAM Manager)가 런타임에 서비스 호출로 모드 전환
 #   4. database_path 기본값을 ~/.ros/maps/ 디렉토리로 설정
 #
@@ -115,8 +115,8 @@ def launch_setup(context, *args, **kwargs):
                 # GUI 모드 고정 파라미터
                 # 매핑 모드로 시작 → GUI에서 set_mode_localization/set_mode_mapping 서비스로 전환
                 # ============================================================
-                "Mem/IncrementalMemory": "true",
-                "Mem/InitWMWithAllNodes": "false",
+                "Mem/IncrementalMemory": "false",      # 기본 localization 모드 (GUI에서 매핑 모드로 전환 가능)
+                "Mem/InitWMWithAllNodes": "true",      # 기존 맵 전체를 WM에 로드
 
                 'Mem/RecentWmRatio': '0.3',
                 "odom_correction": LaunchConfiguration('odom_correction'),
@@ -242,7 +242,7 @@ def generate_launch_description():
         DeclareLaunchArgument('map_topic',      default_value='map',                description=''),
         DeclareLaunchArgument('publish_tf_map', default_value='true',               description=''),
         DeclareLaunchArgument('namespace',      default_value='rtabmap',            description=''),
-        DeclareLaunchArgument('database_path',  default_value=os.path.join(SLAM_MANAGER_CONFIG, 'daim_v1.db'),  description='맵 DB 저장 경로 (SLAM Manager GUI config/ 디렉토리)'),
+        DeclareLaunchArgument('database_path',  default_value='/tmp/rtabmap_runtime.db',  description='런타임 DB (임시, 재부팅 시 삭제됨). 영구 저장은 GUI에서 맵 저장 사용'),
         DeclareLaunchArgument('topic_queue_size', default_value='1',                description=''),
         DeclareLaunchArgument('queue_size',     default_value='10',                 description=''),
         DeclareLaunchArgument('qos',            default_value='2',                  description=''),
