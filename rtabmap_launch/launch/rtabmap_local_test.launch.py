@@ -7,7 +7,7 @@ import os
 
 # ROS_WS 환경변수 기반 경로 설정
 ROS_WS = os.environ.get('ROS_WS', os.path.expanduser('~/revision_daim_ws'))
-SLAM_MANAGER_CONFIG = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'rtabmap_slam_manager', 'config')
+SLAM_MANAGER_CONFIG = os.path.join(ROS_WS, 'src', 'alice_navigation', 'aeirobot_slam_manager', 'config')
 FEATURE_EXTRACTORS = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'feature_extractors')
 
 from launch import LaunchDescription, Substitution, LaunchContext
