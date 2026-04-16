@@ -5,8 +5,10 @@
 
 import os
 
-# ROS_WS 환경변수 기반 경로 설정
-ROS_WS = os.environ.get('ROS_WS', os.path.expanduser('~/revision_daim_ws'))
+# ROS_WS 환경변수 필수
+ROS_WS = os.environ.get('ROS_WS')
+if not ROS_WS:
+    raise RuntimeError("ROS_WS 환경변수가 설정되지 않았습니다. 예: export ROS_WS=/path/to/ws")
 SLAM_MANAGER_CONFIG = os.path.join(ROS_WS, 'src', 'alice_navigation', 'aeirobot_slam_manager', 'config')
 FEATURE_EXTRACTORS = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'feature_extractors')
 
