@@ -2121,12 +2121,18 @@ bool convertRGBDMsgs(
 				return false;
 			}
 
-			UASSERT_MSG(imageMsgs[i]->image.cols == imageWidth && imageMsgs[i]->image.rows == imageHeight,
-						uFormat("imageWidth=%d vs %d imageHeight=%d vs %d",
-								imageWidth,
-								imageMsgs[i]->image.cols,
-								imageHeight,
-								imageMsgs[i]->image.rows).c_str());
+			// 멀티카메라: 크기 다르면 첫 번째 카메라 기준으로 resize (이어붙이기 위해 필수)
+			if(imageMsgs[i]->image.cols != imageWidth || imageMsgs[i]->image.rows != imageHeight)
+			{
+				static bool convergenceWarned = false;
+				if(!convergenceWarned)
+				{
+					UWARN("Camera %d image size (%dx%d) differs from camera 0 (%dx%d). "
+						  "Images will be resized to match. This warning is shown only once.",
+						  i, imageMsgs[i]->image.cols, imageMsgs[i]->image.rows, imageWidth, imageHeight);
+					convergenceWarned = true;
+				}
+			}
 		}
 		 if(!depthMsgs.empty())
 		{
@@ -2158,12 +2164,7 @@ bool convertRGBDMsgs(
 		rclcpp::Time stamp;
 		if(isDepth && !depthMsgs.empty())
 		{
-			UASSERT_MSG(depthMsgs[i]->image.cols == depthWidth && depthMsgs[i]->image.rows == depthHeight,
-					uFormat("depthWidth=%d vs %d imageHeight=%d vs %d",
-							depthWidth,
-							depthMsgs[i]->image.cols,
-							depthHeight,
-							depthMsgs[i]->image.rows).c_str());
+			// 멀티카메라: depth 크기 다르면 resize로 처리
 			stamp = depthMsgs[i]->header.stamp;
 		}
 		else if(!imageMsgs.empty())
@@ -2229,7 +2230,12 @@ bool convertRGBDMsgs(
 			}
 			if(ptrImage->image.type() == rgb.type())
 			{
-				ptrImage->image.copyTo(cv::Mat(rgb, cv::Rect(i*imageWidth, 0, imageWidth, imageHeight)));
+				cv::Mat srcImg = ptrImage->image;
+				if(srcImg.cols != imageWidth || srcImg.rows != imageHeight)
+				{
+					cv::resize(srcImg, srcImg, cv::Size(imageWidth, imageHeight));
+				}
+				srcImg.copyTo(cv::Mat(rgb, cv::Rect(i*imageWidth, 0, imageWidth, imageHeight)));
 			}
 			else
 			{
@@ -2252,6 +2258,10 @@ bool convertRGBDMsgs(
 
 				if(subDepth.type() == depth.type())
 				{
+					if(subDepth.cols != depthWidth || subDepth.rows != depthHeight)
+					{
+						cv::resize(subDepth, subDepth, cv::Size(depthWidth, depthHeight), 0, 0, cv::INTER_NEAREST);
+					}
 					subDepth.copyTo(cv::Mat(depth, cv::Rect(i*depthWidth, 0, depthWidth, depthHeight)));
 				}
 				else
@@ -2280,7 +2290,12 @@ bool convertRGBDMsgs(
 				}
 				if(ptrImage->image.type() == depth.type())
 				{
-					ptrImage->image.copyTo(cv::Mat(depth, cv::Rect(i*depthWidth, 0, depthWidth, depthHeight)));
+					cv::Mat srcRight = ptrImage->image;
+					if(srcRight.cols != depthWidth || srcRight.rows != depthHeight)
+					{
+						cv::resize(srcRight, srcRight, cv::Size(depthWidth, depthHeight));
+					}
+					srcRight.copyTo(cv::Mat(depth, cv::Rect(i*depthWidth, 0, depthWidth, depthHeight)));
 				}
 				else
 				{
@@ -2290,9 +2305,31 @@ bool convertRGBDMsgs(
 			}
 		}
 
+		// 멀티카메라 resize 시 camera intrinsic 스케일링
+		auto scaleCameraInfo = [&](const sensor_msgs::msg::CameraInfo & info,
+								   int origW, int origH, int targetW, int targetH)
+			-> sensor_msgs::msg::CameraInfo
+		{
+			if(origW == targetW && origH == targetH)
+				return info;
+			sensor_msgs::msg::CameraInfo scaled = info;
+			double sx = (double)targetW / origW;
+			double sy = (double)targetH / origH;
+			scaled.width = targetW;
+			scaled.height = targetH;
+			scaled.k[0] *= sx; scaled.k[2] *= sx;
+			scaled.k[4] *= sy; scaled.k[5] *= sy;
+			scaled.p[0] *= sx; scaled.p[2] *= sx;
+			scaled.p[5] *= sy; scaled.p[6] *= sy;
+			return scaled;
+		};
+
 		if(isDepth)
 		{
-			cameraModels.push_back(rtabmap_conversions::cameraModelFromROS(cameraInfoMsgs[i], localTransform));
+			sensor_msgs::msg::CameraInfo adjInfo = !imageMsgs.empty() ?
+				scaleCameraInfo(cameraInfoMsgs[i], imageMsgs[i]->image.cols, imageMsgs[i]->image.rows, imageWidth, imageHeight) :
+				cameraInfoMsgs[i];
+			cameraModels.push_back(rtabmap_conversions::cameraModelFromROS(adjInfo, localTransform));
 		}
 		else //stereo
 		{
@@ -2349,7 +2386,13 @@ bool convertRGBDMsgs(
 				}
 			}
 
-			rtabmap::StereoCameraModel stereoModel = rtabmap_conversions::stereoCameraModelFromROS(cameraInfoMsgs[i], depthCameraInfoMsgs[i], localTransform, stereoTransform);
+			sensor_msgs::msg::CameraInfo adjLeftInfo = !imageMsgs.empty() ?
+				scaleCameraInfo(cameraInfoMsgs[i], imageMsgs[i]->image.cols, imageMsgs[i]->image.rows, imageWidth, imageHeight) :
+				cameraInfoMsgs[i];
+			sensor_msgs::msg::CameraInfo adjRightInfo = !depthMsgs.empty() ?
+				scaleCameraInfo(depthCameraInfoMsgs[i], depthMsgs[i]->image.cols, depthMsgs[i]->image.rows, depthWidth, depthHeight) :
+				depthCameraInfoMsgs[i];
+			rtabmap::StereoCameraModel stereoModel = rtabmap_conversions::stereoCameraModelFromROS(adjLeftInfo, adjRightInfo, localTransform, stereoTransform);
 
 			if(stereoModel.baseline() > 10.0)
 			{

@@ -99,7 +99,7 @@ StereoSync::StereoSync(const rclcpp::NodeOptions & options) :
 	image_transport::TransportHints hints(this);
 	imageLeftSub_.subscribe(this, "left/image_rect", hints.getTransport(), rclcpp::QoS(topicQueueSize).reliability((rmw_qos_reliability_policy_t)qos).get_rmw_qos_profile());
 	imageRightSub_.subscribe(this, "right/image_rect", hints.getTransport(), rclcpp::QoS(topicQueueSize).reliability((rmw_qos_reliability_policy_t)qos).get_rmw_qos_profile());
-	cameraInfoLeftSub_.subscribe(this, "left/camera_info"), rclcpp::QoS(topicQueueSize).reliability((rmw_qos_reliability_policy_t)qosCamInfo).get_rmw_qos_profile();
+	cameraInfoLeftSub_.subscribe(this, "left/camera_info", rclcpp::QoS(topicQueueSize).reliability((rmw_qos_reliability_policy_t)qosCamInfo).get_rmw_qos_profile());
 	cameraInfoRightSub_.subscribe(this, "right/camera_info", rclcpp::QoS(topicQueueSize).reliability((rmw_qos_reliability_policy_t)qosCamInfo).get_rmw_qos_profile());
 
 	std::string subscribedTopicsMsg = uFormat("\n%s subscribed to (%s sync%s):\n   %s,\n   %s,\n   %s,\n   %s",
