@@ -971,7 +971,7 @@ CoreWrapper::CoreWrapper(const rclcpp::NodeOptions & options) :
 	this->get_parameter("odom_correction", odomCorrectionEnabled_);
 	
 	// ② pelvis 초기 pose 토픽 구독
-    robotPoseInfoSub_ = this->create_subscription<alice4_localization_msgs::msg::PoseWithInfoStamped>(
+    robotPoseInfoSub_ = this->create_subscription<alice_localization_msgs::msg::PoseWithInfoStamped>(
         "/aeirobot/localization/manager_pose",
         aeirobot::qos_sensor_profile,
         std::bind(&CoreWrapper::robotPoseInfoCallback, this, std::placeholders::_1));
@@ -1008,7 +1008,7 @@ CoreWrapper::~CoreWrapper()
 	delete interOdomSync_;
 }
 
-void CoreWrapper::robotPoseInfoCallback(const alice4_localization_msgs::msg::PoseWithInfoStamped::SharedPtr msg)
+void CoreWrapper::robotPoseInfoCallback(const alice_localization_msgs::msg::PoseWithInfoStamped::SharedPtr msg)
 {
 	// --- 0) info 에 key: set_pose, value: true 인지 확인 ---
     bool doOverride = false;

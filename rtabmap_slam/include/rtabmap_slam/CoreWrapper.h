@@ -100,7 +100,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 // TEST TEST //
-#include <alice4_localization_msgs/msg/pose_with_info_stamped.hpp>
+#include <alice_localization_msgs/msg/pose_with_info_stamped.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 #include "aeirobot_toolbox/qos_profiles.hpp"
 
@@ -132,10 +132,10 @@ private:
 	bool docking_state_ = false;
 
 	// ① pelvis 초기 pose 수신용
-    rclcpp::Subscription<alice4_localization_msgs::msg::PoseWithInfoStamped>::SharedPtr robotPoseInfoSub_;
+    rclcpp::Subscription<alice_localization_msgs::msg::PoseWithInfoStamped>::SharedPtr robotPoseInfoSub_;
     
     // 콜백 선언
-    void robotPoseInfoCallback(const alice4_localization_msgs::msg::PoseWithInfoStamped::SharedPtr msg);
+    void robotPoseInfoCallback(const alice_localization_msgs::msg::PoseWithInfoStamped::SharedPtr msg);
 
 	////////////////////////////////////  기존 변수들  /////////////////////////////////////// 
 	bool odomUpdate(const nav_msgs::msg::Odometry & odomMsg, rclcpp::Time stamp);
