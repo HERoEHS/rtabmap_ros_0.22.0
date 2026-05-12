@@ -26,7 +26,9 @@
   <depend>visualization_msgs</depend>
   <depend>apriltag_msgs</depend>
   <depend>alice_localization_msgs</depend>
-  
+  <depend>aeirobot_toolbox</depend>
+  <depend>tf2_geometry_msgs</depend>
+
   <depend>rtabmap_msgs</depend>
   <depend>rtabmap_util</depend>
   <depend>rtabmap_sync</depend>
