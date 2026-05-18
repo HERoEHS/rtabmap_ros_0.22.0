@@ -98,6 +98,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fiducial_msgs/FiducialTransformArray.h>
 #endif
 
+
+// TEST TEST //
+#include <alice_localization_msgs/msg/pose_with_info_stamped.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#include "aeirobot_toolbox/qos_profiles.hpp"
+
+
 namespace rtabmap {
 class StereoDense;
 }
@@ -117,6 +124,20 @@ public:
 #endif
 
 private:
+
+	// odom 보정 on off 제어용 변수
+	bool odomCorrectionEnabled_;
+	bool pendingPelvisOverride_;
+	bool pelvisOverrideActive_ = false;
+	bool docking_state_ = false;
+
+	// ① pelvis 초기 pose 수신용
+    rclcpp::Subscription<alice_localization_msgs::msg::PoseWithInfoStamped>::SharedPtr robotPoseInfoSub_;
+
+    // 콜백 선언
+    void robotPoseInfoCallback(const alice_localization_msgs::msg::PoseWithInfoStamped::SharedPtr msg);
+
+	////////////////////////////////////  기존 변수들  ///////////////////////////////////////
 	bool odomUpdate(const nav_msgs::msg::Odometry & odomMsg, rclcpp::Time stamp);
 	bool odomTFUpdate(const std::string & odomFrameId, const rclcpp::Time & stamp); // TF odom
 
@@ -214,6 +235,9 @@ private:
 	std::map<int, rtabmap::Transform> filterNodesToAssemble(
 			const std::map<int, rtabmap::Transform> & nodes,
 			const rtabmap::Transform & currentPose);
+
+	// 도킹 state 콜백
+	void dockingStateCallback(const std_msgs::msg::Bool::SharedPtr msg);
 
 	void updateRtabmapCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
 	void resetRtabmapCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
@@ -322,6 +346,9 @@ private:
 	std::mutex mapToOdomMutex_;
 
 	rtabmap_util::MapsManager mapsManager_;
+
+	// docking state sub 선언
+	rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr docking_state_sub_;
 
 	rclcpp::Publisher<rtabmap_msgs::msg::Info>::SharedPtr infoPub_;
 	rclcpp::Publisher<rtabmap_msgs::msg::MapData>::SharedPtr mapDataPub_;

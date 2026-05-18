@@ -147,7 +147,8 @@ CoreWrapper::CoreWrapper(const rclcpp::NodeOptions & options) :
 		twoDMapping_(Parameters::defaultRegForce3DoF()),
 		previousStamp_(0),
 		ulogToRosout_(this),
-		triggerNewMapBeforeNextUpdate_(false)
+		triggerNewMapBeforeNextUpdate_(false),
+		pendingPelvisOverride_(false)
 {
 	char * rosHomePath = getenv("ROS_HOME");
 	std::string workingDir = rosHomePath?rosHomePath:UDirectory::homeDir()+"/.ros";
@@ -307,6 +308,12 @@ CoreWrapper::CoreWrapper(const rclcpp::NodeOptions & options) :
 	localPathPub_ = this->create_publisher<nav_msgs::msg::Path>("local_path", 1);
 	globalPathNodesPub_ = this->create_publisher<rtabmap_msgs::msg::Path>("global_path_nodes", 1);
 	localPathNodesPub_ = this->create_publisher<rtabmap_msgs::msg::Path>("local_path_nodes", 1);
+
+	// 도킹 정보 subscribe
+	docking_state_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+		"/aeirobot/block_odom_correction",
+		10,
+		std::bind(&CoreWrapper::dockingStateCallback, this, std::placeholders::_1));
 
 	configPath_ = uReplaceChar(configPath_, '~', UDirectory::homeDir());
 	databasePath_ = uReplaceChar(databasePath_, '~', UDirectory::homeDir());
@@ -958,6 +965,17 @@ CoreWrapper::CoreWrapper(const rclcpp::NodeOptions & options) :
 		on_parameter_event_callback,
 		rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(rmw_qos_profile_parameter_events)),
 		paramOptions);
+
+	// odom 보정 on/off 제어 파라미터
+	this->declare_parameter("odom_correction", true);
+	this->get_parameter("odom_correction", odomCorrectionEnabled_);
+
+	// ② pelvis 초기 pose 토픽 구독
+    robotPoseInfoSub_ = this->create_subscription<alice_localization_msgs::msg::PoseWithInfoStamped>(
+        "/aeirobot/localization/manager_pose",
+        aeirobot::qos_sensor_profile,
+        std::bind(&CoreWrapper::robotPoseInfoCallback, this, std::placeholders::_1));
+
 }
 
 CoreWrapper::~CoreWrapper()
@@ -988,6 +1006,73 @@ CoreWrapper::~CoreWrapper()
 	printf("rtabmap: Saving database/long-term memory...done! (located at %s, %ld MB)\n", databasePath_.c_str(), UFile::length(databasePath_)/(1024*1024));
 
 	delete interOdomSync_;
+}
+
+void CoreWrapper::robotPoseInfoCallback(const alice_localization_msgs::msg::PoseWithInfoStamped::SharedPtr msg)
+{
+	// --- 0) info 에 key: set_pose, value: true 인지 확인 ---
+    bool doOverride = false;
+    for(const auto &kv : msg->info)
+    {
+        if(kv.key == "set_pose" && kv.value == "true")
+        {
+            doOverride = true;
+            break;
+        }
+    }
+    if(!doOverride)
+    {
+        RCLCPP_DEBUG(this->get_logger(), "robot_pose_info received, but set_pose!=true → override skip");
+        return;
+    }
+
+    // --- 1) odom_frame → pelvis_waist TF 읽기 ---
+    std::string odomFrame = odomFrameId_.empty() ? frameId_ : odomFrameId_;
+    geometry_msgs::msg::TransformStamped odom2pelvis_msg;
+    try {
+        odom2pelvis_msg = tfBuffer_->lookupTransform(
+            odomFrame,
+            "pelvis_waist",
+            msg->header.stamp,
+            rclcpp::Duration::from_seconds(waitForTransform_));
+    } catch (tf2::TransformException & e) {
+        RCLCPP_WARN(this->get_logger(), "pelvis_waist TF lookup failed: %s", e.what());
+        return;
+    }
+    // tf2 변환 객체로
+    tf2::Transform odom2pelvis;
+    tf2::fromMsg(odom2pelvis_msg.transform, odom2pelvis);
+
+    // --- 2) existing pelvis_waist z, roll, pitch 추출 ---
+    double z = odom2pelvis.getOrigin().z();
+    tf2::Matrix3x3 mat(odom2pelvis.getRotation());
+    double roll, pitch, yaw_tmp;
+    mat.getRPY(roll, pitch, yaw_tmp);
+
+    // --- 3) 2D msg→3D tf 생성 (map→pelvis_waist) ---
+    tf2::Transform map2pelvis;
+    map2pelvis.setOrigin(tf2::Vector3(msg->pose.x, msg->pose.y, z));
+    tf2::Quaternion q;
+    q.setRPY(roll, pitch, msg->pose.theta);
+    map2pelvis.setRotation(q);
+
+    // --- 4) map→odom 보정 계산 ---
+    // map→odom = (map→pelvis) * (odom→pelvis)⁻¹
+    tf2::Transform map2odom_tf = map2pelvis * odom2pelvis.inverse();
+
+    // --- 5) rtabmap이 쓰는 형식으로 변환해 저장 ---
+    {
+        std::lock_guard<std::mutex> lock(mapToOdomMutex_);
+        mapToOdom_ = rtabmap_conversions::transformFromTF(map2odom_tf);
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+        "[pelvis penalty/init] map→odom correction set: x=%.2f y=%.2f θ=%.2f",
+        msg->pose.x, msg->pose.y, msg->pose.theta);
+
+	// override 상태 활성화
+    pendingPelvisOverride_ = true;
+	pelvisOverrideActive_  = true;
 }
 
 void CoreWrapper::loadParameters(const std::string & configFile, ParametersMap & parameters)
@@ -2284,7 +2369,42 @@ void CoreWrapper::process(
 		{
 			timeRtabmap = timer.ticks();
 			mapToOdomMutex_.lock();
-			mapToOdom_ = rtabmap_.getMapCorrection();
+
+			// 원본 코드 시작
+			// mapToOdom_ = rtabmap_.getMapCorrection();
+			// 원본 코드 끝
+
+			if(odomCorrectionEnabled_ && !docking_state_)
+			{
+			    // 1) 루프 클로징이 감지되면 무조건 override 해제
+			    if(rtabmap_.getStatistics().loopClosureId() != 0 || rtabmap_.getStatistics().proximityDetectionId() != 0)
+			    {
+			        if(pelvisOverrideActive_)
+			        {
+			            pelvisOverrideActive_ = false;
+			            pendingPelvisOverride_ = false;
+						mapToOdom_ = rtabmap_.getMapCorrection();
+			            // RCLCPP_INFO(this->get_logger(), "Loop closure detected → pelvis override 해제, 이후부터 RTAB-Map 보정 적용.");
+			        }
+			    }
+
+			    // 2) override 가 아직 활성화되어 있으면 콜백에서 세팅된 mapToOdom_ 유지
+			    if(pelvisOverrideActive_)
+			    {
+			        if(pendingPelvisOverride_)
+			        {
+			            pendingPelvisOverride_ = false;
+			            // RCLCPP_INFO(this->get_logger(), "Pelvis override applied (강제 초기 위치 유지).");
+			        }
+			        // mapToOdom_ 은 이미 robotPoseInfoCallback 에서 세팅된 값 그대로
+			    }
+			    else
+			    {
+			        // 3) override 해제된 이후에는 매 프레임 RTAB-Map 자체 보정으로 복귀
+			        mapToOdom_ = rtabmap_.getMapCorrection();
+			    }
+			}
+
 			Transform mapToOdomSafe = mapToOdom_.clone();
 			if(!odomFrameId.empty() && !odomFrameId_.empty() && odomFrameId_.compare(odomFrameId)!=0)
 			{
@@ -2741,6 +2861,20 @@ void CoreWrapper::imuAsyncCallback(const sensor_msgs::msg::Imu::SharedPtr msg)
 				imuFrameId_ = msg->header.frame_id;
 			}
 		}
+	}
+}
+
+void CoreWrapper::dockingStateCallback(const std_msgs::msg::Bool::SharedPtr msg)
+{
+	docking_state_ = msg->data;
+
+	if(docking_state_)
+	{
+		RCLCPP_INFO(get_logger(), "Docking state: ACTIVE (true)");
+	}
+	else
+	{
+		RCLCPP_INFO(get_logger(), "Docking state: INACTIVE (false)");
 	}
 }
 
