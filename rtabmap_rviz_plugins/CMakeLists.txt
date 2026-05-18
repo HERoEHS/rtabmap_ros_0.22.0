@@ -17,6 +17,8 @@ find_package(std_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(rtabmap_conversions REQUIRED)
 find_package(rtabmap_msgs REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)  # ← 이 줄 추가
+
 
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -34,6 +36,7 @@ SET(Libraries
   tf2
   rtabmap_conversions
   rtabmap_msgs
+  Boost
 )
 
 MESSAGE(STATUS "rtabmap_conversions=${rtabmap_conversions_LIBRARIES}")

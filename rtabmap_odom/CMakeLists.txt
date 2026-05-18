@@ -17,6 +17,7 @@ find_package(laser_geometry REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)    # pcl_ros 의존성 해결용
 find_package(pcl_ros REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(rclcpp REQUIRED)
@@ -39,6 +40,7 @@ SET(Libraries
    nav_msgs
    pcl_conversions
    pcl_ros
+   Boost                          # pcl_ros 의존성 해결용
    rclcpp
    sensor_msgs
    rtabmap_conversions

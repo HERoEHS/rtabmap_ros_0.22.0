@@ -15,6 +15,7 @@ find_package(nav_msgs REQUIRED)
 find_package(rtabmap_msgs REQUIRED)
 find_package(rtabmap_sync REQUIRED)
 find_package(tf2 REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)  # ← 이 줄 추가
 
 find_package(RTABMap COMPONENTS gui REQUIRED)
 
@@ -33,6 +34,7 @@ SET(Libraries
    rtabmap_msgs
    rtabmap_sync
    tf2
+   Boost
 )
 
 ###########

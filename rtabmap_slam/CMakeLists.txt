@@ -24,8 +24,14 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(rtabmap_msgs REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)        # rtabmap_util 관련 빌드에러 해결용
 find_package(rtabmap_util REQUIRED)
 find_package(rtabmap_sync REQUIRED)
+# alice4 커스터마이즈: CoreWrapper.h 가 alice_localization_msgs / aeirobot_toolbox 의
+# QoS 프로파일을 사용한다. tf2_geometry_msgs 는 좌표 변환 헬퍼.
+find_package(alice_localization_msgs REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(aeirobot_toolbox REQUIRED)
 
 #optional
 find_package(apriltag_msgs)
@@ -41,6 +47,7 @@ include_directories(
 
 # libraries
 SET(Libraries
+   Boost                                                 # rtabmap_util 관련 빌드에러 해결용
    cv_bridge
    geometry_msgs
    nav_msgs
@@ -55,6 +62,9 @@ SET(Libraries
    rtabmap_msgs
    rtabmap_util
    rtabmap_sync
+   tf2_geometry_msgs                # alice4: 좌표 변환 헬퍼
+   alice_localization_msgs          # alice4: 커스텀 메시지 타입
+   aeirobot_toolbox                 # alice4: QoS 프로파일 (qos_profiles.hpp)
 )
 
 if("$ENV{ROS_DISTRO}" STRLESS "jazzy")

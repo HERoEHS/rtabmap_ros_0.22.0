@@ -25,7 +25,13 @@
   <depend>tf2_ros</depend>
   <depend>visualization_msgs</depend>
   <depend>apriltag_msgs</depend>
-  
+  <depend>aruco_msgs</depend>
+  <depend>aruco_opencv_msgs</depend>
+  <!-- depend>aruco_markers_msgs</depend --> <!-- binaries only available on humble -->
+  <depend>alice_localization_msgs</depend>
+  <depend>aeirobot_toolbox</depend>
+  <depend>tf2_geometry_msgs</depend>
+
   <depend>rtabmap_msgs</depend>
   <depend>rtabmap_util</depend>
   <depend>rtabmap_sync</depend>
