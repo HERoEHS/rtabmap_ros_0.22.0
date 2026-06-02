@@ -56,6 +56,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
+#include <cmath>
 
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/core/util3d.h>
@@ -1066,9 +1067,21 @@ void CoreWrapper::robotPoseInfoCallback(const alice_localization_msgs::msg::Pose
         mapToOdom_ = rtabmap_conversions::transformFromTF(map2odom_tf);
     }
 
-    RCLCPP_INFO(this->get_logger(),
-        "[pelvis penalty/init] map→odom correction set: x=%.2f y=%.2f θ=%.2f",
-        msg->pose.x, msg->pose.y, msg->pose.theta);
+    // 로그 폭주 방지: 매니저가 set_pose=true 를 ~30Hz 로 재발행 → 같은 좌표면 도배.
+    // override 좌표가 바뀌거나 첫 발동(엣지) 시에만 1줄. correction(mapToOdom_) 갱신은 위에서 매번 수행.
+    if (!overrideLogValid_ ||
+        std::fabs(msg->pose.x - lastOverrideX_) > 1e-3 ||
+        std::fabs(msg->pose.y - lastOverrideY_) > 1e-3 ||
+        std::fabs(msg->pose.theta - lastOverrideTheta_) > 1e-3)
+    {
+        RCLCPP_INFO(this->get_logger(),
+            "[pelvis penalty/init] map→odom correction set: x=%.2f y=%.2f θ=%.2f",
+            msg->pose.x, msg->pose.y, msg->pose.theta);
+        lastOverrideX_ = msg->pose.x;
+        lastOverrideY_ = msg->pose.y;
+        lastOverrideTheta_ = msg->pose.theta;
+        overrideLogValid_ = true;
+    }
 
 	// override 상태 활성화
     pendingPelvisOverride_ = true;

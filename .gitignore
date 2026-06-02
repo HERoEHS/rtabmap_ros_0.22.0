@@ -1,3 +1,4 @@
 .pydevproject
 .settings
 __pycache__
+.omc/*
