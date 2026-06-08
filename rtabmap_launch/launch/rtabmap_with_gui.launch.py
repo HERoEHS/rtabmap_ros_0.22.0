@@ -15,6 +15,16 @@
 
 import os
 
+from launch import LaunchDescription, Substitution, LaunchContext
+from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable, LogInfo, OpaqueFunction
+from launch.substitutions import LaunchConfiguration, ThisLaunchFileDir, PythonExpression
+from launch.conditions import IfCondition, UnlessCondition
+from launch_ros.actions import Node
+from launch_ros.actions import SetParameter
+from typing import Text
+from ament_index_python.packages import get_package_share_directory
+
+
 # ROS_WS 환경변수 필수
 ROS_WS = os.environ.get('ROS_WS')
 if not ROS_WS:
@@ -58,6 +68,10 @@ class ConditionalBool(Substitution):
 
 def launch_setup(context, *args, **kwargs):
 
+    # NOTE: optimized graph 캐시 wipe 는 slam_manager_node.call_load_database 로 이동함.
+    #       이 launch 는 slam_manager 가 호출하지 않고, database_path 도 런타임 선택 맵이 아닌
+    #       /tmp 런타임 DB 라서 여기서 wipe 해봐야 무효였음(이중 무효). 실제 맵 선택 시점인
+    #       load_database 서비스 직전(slam_manager_node)에서 대상 config/<name>.db 를 wipe 한다.
     return [
         DeclareLaunchArgument('depth', default_value=ConditionalText('false', 'true', IfCondition(PythonExpression(["'", LaunchConfiguration('stereo'), "' == 'true'"]))._predicate_func(context)), description=''),
         DeclareLaunchArgument('subscribe_rgb', default_value=LaunchConfiguration('depth'), description=''),
