@@ -131,6 +131,12 @@ private:
 	bool pelvisOverrideActive_ = false;
 	bool docking_state_ = false;
 
+	// 로그 폭주 방지: set_pose override 가 매 메시지(~30Hz) 같은 좌표로 반복 → 값 변화 시에만 로그.
+	double lastOverrideX_ = 0.0;
+	double lastOverrideY_ = 0.0;
+	double lastOverrideTheta_ = 0.0;
+	bool   overrideLogValid_ = false;
+
 	// ① pelvis 초기 pose 수신용
     rclcpp::Subscription<alice_localization_msgs::msg::PoseWithInfoStamped>::SharedPtr robotPoseInfoSub_;
 
