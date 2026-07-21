@@ -5,6 +5,13 @@
 
 import os
 
+# ROS_WS 환경변수 필수
+ROS_WS = os.environ.get('ROS_WS')
+if not ROS_WS:
+    raise RuntimeError("ROS_WS 환경변수가 설정되지 않았습니다. 예: export ROS_WS=/path/to/ws")
+SLAM_MANAGER_CONFIG = os.path.join(ROS_WS, 'src', 'alice_navigation', 'aeirobot_slam_manager', 'config')
+FEATURE_EXTRACTORS = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'feature_extractors')
+
 from launch import LaunchDescription, Substitution, LaunchContext
 from launch.actions import DeclareLaunchArgument, SetEnvironmentVariable, LogInfo, OpaqueFunction
 from launch.substitutions import LaunchConfiguration, ThisLaunchFileDir, PythonExpression
@@ -113,42 +120,96 @@ def launch_setup(context, *args, **kwargs):
     
                 'Mem/RecentWmRatio': '0.3',   # 기본값 0.2, 마지막 루프 클로징을 기준으로 WM에 20%만 냅두고 나머지는 LTM으로 옮기겠다는 의미, LTM으로 들어가면 해당 노드는 루프 클로징에 사용되지 않음. -> 수십GB급 맵 데이터에서도 실시간성 유지를 위해 0.2였던 것, 테스트 해보면서 값 조절하기
                 "odom_correction": LaunchConfiguration('odom_correction'),
-                # "Grid/MaxObstacleHeight": "0.9",
+                # ============================================================
+                # Grid Map 높이 필터링 파라미터 (바닥면 제거용)
+                # ============================================================
+                # 포인트클라우드에서 이 높이(m) 미만의 점은 완전히 버림.
+                # 바닥 반사, depth 카메라 노이즈 등 바닥 아래로 찍히는 허위 포인트 제거용.
+                # 튜닝: 센서가 바닥에서 얼마나 높은지 기준으로, 바닥면 바로 아래 값을 설정.
+                #        너무 높이면 실제 낮은 장애물(문턱 등)도 같이 사라지므로 주의.
+                'Grid/MinGroundHeight': '0.0',
+
+                # z <= 이 값(m)인 포인트는 "바닥"으로 분류되어 장애물 맵에 안 찍힘.
+                # 튜닝: 로봇 base_link 기준 바닥 높이 + 약간의 마진(0.03~0.10m).
+                #        값이 너무 크면 낮은 장애물까지 바닥으로 무시하고,
+                #        너무 작으면 바닥 노이즈가 장애물로 찍힘.
+                'Grid/MaxGroundHeight': '0.05',
+
+                # z > 이 값(m)인 포인트는 완전히 버림 (천장, 높은 선반 등 제거).
+                # 튜닝: 로봇이 통과할 수 없는 높이 이상을 설정. 보통 0.8~1.5m.
+                'Grid/MaxObstacleHeight': '1.0',
+
+                # false: 노말 계산 없이 순수 z 높이만으로 바닥/장애물 분류 (빠르고 단순).
+                # true:  포인트 노말 벡터로 바닥 평면을 추정 (울퉁불퉁한 지형에 적합하나 느림).
+                # 평평한 실내 환경에서는 false 추천.
+                'Grid/NormalsSegmentation': 'false',
+
+                # true: 센서→포인트 방향으로 레이트레이싱하여 빈 공간을 free로 채움.
+                # 맵에 unknown(회색) 영역이 줄어들고 훨씬 깔끔해짐. 다만 연산량 약간 증가.
+                'Grid/RayTracing': 'true',
+
+                # 그리드 셀 크기(m). 작을수록 정밀하지만 노이즈 민감 & 메모리 증가.
+                # 튜닝: 0.05(5cm)가 nav2 기본값. 넓은 공간이면 0.1도 가능.
+                # 'Grid/CellSize': '0.05',
+
+                # 이 거리(m) 이상의 포인트는 버림. depth 카메라는 먼 거리에서 정확도가 떨어지므로 제한.
+                # 튜닝: 사용하는 depth 카메라의 유효 측정 거리에 맞춰 설정.
+                # 'Grid/RangeMax': '5.0',
+
+                # 이 거리(m) 이내의 포인트는 버림. 너무 가까운 depth 노이즈 제거.
+                # 'Grid/RangeMin': '0.3',
+
                 'Grid/3D': "false",  # 2D Occupancy Grid 활성화
                 "Reg/Force3DoF": "true",
                 'RGBD/ForceOdom3DoF': 'true',      # VO 추정 z/roll/pitch 를 0으로 강제 => 기본값은 true
                 'Reg/Strategy':'0',         # "0=Vis, 1=Icp, 2=VisIcp"
                 'Kp/DetectorStrategy':'11',  # "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector"
                 'Vis/FeatureType':'11',      # "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE 10=ORB-OCTREE 11=SuperPoint 12=SURF/FREAK 13=GFTT/DAISY 14=SURF/DAISY 15=PyDetector"
-                'Vis/MaxFeatures': '500',     # 기본값 1000
+                'Vis/MaxFeatures': '1000',    # [2026-07-01 공급강화] 500->1000 (720p 검출이 캡을 채우므로 유효). localization 런치와 동일.
                 'ORB/Gpu': 'false',
-                "Mem/ImagePostDecimation": "2",   # 맵 저장할 때 이미지 다운스케일해서 저장함. 1: 원본, 2 3 4... 1/2 1/3 1/4로 다운스케일 하겠다
-                "Mem/ImagePreDecimation": "2",    # 실시간에서 이미지를 다운스케일해서 사용함. 1: 원본, 2 3 4... 1/2 1/3 1/4로 다운스케일 하겠다  
-                'SuperPoint/ModelPath': '/home/hyeongu/2026_heroehs/src/alice_navigation/localization/feature_extractors/superpoint_v1.pt',
-                'PyMatcher/Path': '/home/hyeongu/2026_heroehs/src/alice_navigation/localization/feature_extractors/SuperGluePretrainedNetwork/rtabmap_superglue.py',
+                "Mem/ImagePostDecimation": "1",   # 맵 저장 시 이미지 다운스케일 (1: 원본)
+                "Mem/ImagePreDecimation": "1",    # [2026-07-01 공급강화] 2->1: 720p 원본 특징추출(inlier 공급 최대 레버). localization 런치와 반드시 동일.
+                'SuperPoint/ModelPath': os.path.join(FEATURE_EXTRACTORS, 'superpoint_v1.pt'),
+                'PyMatcher/Path': os.path.join(FEATURE_EXTRACTORS, 'SuperGluePretrainedNetwork', 'rtabmap_superglue.py'),
                 'Vis/CorGuessWinSize': '0',   # 기본값 40
                 'Vis/CorNNType': '6',   #  기본값은 1, kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4, BruteForceCrossCheck=5, SuperGlue=6, GMS=7
                 'Reg/RepeatOnce': 'false',  # 기본값 true
-                'Vis/DepthMaskFloorThr': '0.4',   # 뎁스값 추정해서 바닥은 필터링해서 없애는 거 ...아직 잘 모르겠음ㅠ
-                'Kp/MaxFeatures': '500',
+                # 'Vis/DepthMaskFloorThr': '0.4',   # 뎁스값 추정해서 바닥은 필터링해서 없애는 거 ...아직 잘 모르겠음ㅠ
+                'Kp/MaxFeatures': '1000',    # [2026-07-01 공급강화] 500->1000 (BoW 사전 풍부). localization 런치와 동일.
                 'Mem/RehearsalSimilarity': '0.6',  # 0.6
-                'RGBD/OptimizeMaxError': '0.0',    # 기본값: 3.0 | OptimizeMaxError, Robust 는 서로 상반된 파라미터임, OptimizeMaxError 값이 있으면 Robust는 false, OptimizeMaxError = 0.0이면 Robust는 true 가능
-                'Optimizer/Robust': 'true',        # 기본값: false | OptimizeMaxError 표준편차 기준으로 그래프에서 멀리 떨어진 루프 클로징을 거절함 -> 빠르다. Robust는 0~1까지의 가중치를 계산해서 루프 클로징을 거절 또는 수락함.-> 느리지만 공장,복도와 같은 대규모 장소에 적합.
-                'Rtabmap/DetectionRate': '1',     # 기본값 1, 루프 클로징 rate를 의미 단위[Hz]
-                'Kp/MaxDepth': '5.0',             # 특징점 최대 거리
+                'RGBD/OptimizeMaxError': '3.0',    # 기본값: 3.0 | Robust=true 와 상호배타 — localization 런치와 동일하게 3.0 + Robust=false 조합 사용
+                'Optimizer/Robust': 'false',       # 기본값: false | localization 런치와 동일
+                'Rtabmap/DetectionRate': '2',     # LC rate [Hz]
+                'Kp/MaxDepth': '15.0',            # 8.0 -> 15.0 (먼 안정구조 단어화 -> 약한구간 LC 앵커)
+                'Vis/MinInliers': '30',           # 기본 20 -> 30 (미러 false-LC 방어; localization 런치와 동일)
+                'Vis/PnPReprojError': '4',        # 3 -> 4: 첫 fix 확보 목적. MinInliers=30 유지 전제 (미러방어)
+                'RGBD/ProximityPathFilteringRadius': '2.0',  # proximity LC sanity check
+                'RGBD/ProximityMaxGraphDepth': '100',        # proximity 탐색 그래프 깊이
+                'RGBD/LocalRadius': '15.0',                  # proximity 후보 반경
+                'Rtabmap/LoopThr': '0.11',                   # 0.12 -> 0.11 (localization 런치와 일치)
+                'RGBD/MaxOdomCacheSize': '10',               # 지연 LC 검증 윈도우 (localization 전용)
 
                 ## 레전드 파라미터 ##
                 'SuperPoint/Threshold': '0.005',    # 기본값 0.010
-                'SuperPoint/NMSRadius': '2',      # 기본값 4
+                'SuperPoint/NMSRadius': '4',      # 기본값 4
                 'PyMatcher/Iterations': '40',     # 기본값 20
-                'PyMatcher/Threshold': '0.15',     # 기본값 0.2
+                'PyMatcher/Threshold': '0.2',     # 기본값 0.2
                 'PyMatcher/Model': 'indoor',      # indoor outdoor
+
+                ## Prior 워크플로 + VL 통합 (localization 런치와 동일) ##
+                'Optimizer/PriorsIgnored': 'false',
+                'Optimizer/Strategy': '2',            # GTSAM
+                'Optimizer/Iterations': '100',
+                'RGBD/OptimizeFromGraphEnd': 'false', # map->odom TF 보정 (true 면 전역 텔레포트/LC 거부)
+                'RGBD/StartAtOrigin': 'true',         # 매 시작 stale last-loc pose 무시, 맵 원점 가정
+                'Optimizer/LandmarksIgnored': 'false', # VL landmark constraint 활용
                 
                 # ## 오인 루프 클로징을 줄이기 위한 파라미터 ##
                 # 'Rtabmap/LoopThr': '0.11',                # ↑ 더 엄격한 장소인식
                 # 'Mem/STMSize': '30',                     # ↑ 바로 직전 노드 루프 완화
                 # 'Vis/MinInliers': '12',                  # ↑ PnP 인라이어 최소치
                 # 'Vis/MinInliersDistribution': '0.0',     # ↑ 한쪽 몰림 거절
+                # 'Kp/MaxDepth': '10.0',                   # ↓ 원거리 특징 억제
                 # 'RGBD/OptimizeFromGraphEnd': 'true',     # (옵션) 맵 프레임 안정화에 도움
                 # 'RGBD/SavedLocalizationIgnored': 'true', # (옵션) 붙기 전까지 맵 미발행
                 
@@ -249,8 +310,8 @@ def generate_launch_description():
         DeclareLaunchArgument('extend_map', default_value='false', description='LTM 데이터를 모두 WM로 불러온 상태로 추가 맵핑 진행'),
         
         ## GUI ON / OFF
-        DeclareLaunchArgument('rtabmap_viz',  default_value='true',  description='Launch RTAB-Map UI (optional).'),
-        DeclareLaunchArgument('rviz',         default_value='true', description='Launch RVIZ (optional).'),
+        DeclareLaunchArgument('rtabmap_viz',  default_value='false',  description='Launch RTAB-Map UI (optional).'),
+        DeclareLaunchArgument('rviz',         default_value='false', description='Launch RVIZ (optional).'),
 
         ## odom tf 보정 할지말지 변수
         DeclareLaunchArgument('odom_correction', default_value='true', description='loop closing 상황에서 odom tf 옮길건지 말건지 선택하는 변수'),
@@ -276,13 +337,14 @@ def generate_launch_description():
         DeclareLaunchArgument('gui_cfg',  default_value='~/.ros/rtabmap_gui.ini',  description='Configuration path of rtabmap_viz.'),
         DeclareLaunchArgument('rviz_cfg', default_value=config_rviz,               description='Configuration path of rviz2.'),
 
-        DeclareLaunchArgument('frame_id',       default_value='zed_cam_link',          description='zed_camera_link  tracker'),
+        DeclareLaunchArgument('frame_id',       default_value='base_footprint',          description='zed_camera_link  tracker'),
         DeclareLaunchArgument('odom_frame_id',  default_value='odom',                   description='If set, TF is used to get odometry instead of the topic.'),
         DeclareLaunchArgument('map_frame_id',   default_value='map',                description='Output map frame id (TF).'),
         DeclareLaunchArgument('map_topic',      default_value='map',                description='Map topic name.'),
         DeclareLaunchArgument('publish_tf_map', default_value='true',               description='Publish TF between map and odomerty.'),
         DeclareLaunchArgument('namespace',      default_value='rtabmap',            description=''),
-        DeclareLaunchArgument('database_path',  default_value='~/.ros/mapping/alice_v1.db',  description='Where is the map saved/loaded.'),
+        # database_path 기본값을 config/ 디렉토리로 변경 (GUI 맵 관리와 동일 경로 사용)
+        DeclareLaunchArgument('database_path',  default_value=os.path.join(SLAM_MANAGER_CONFIG, 'daim_v1.db'),  description='Where is the map saved/loaded.'),
         DeclareLaunchArgument('topic_queue_size', default_value='1',                description='Queue size of individual topic subscribers.'),
         DeclareLaunchArgument('queue_size',     default_value='10',                 description='Backward compatibility, use "sync_queue_size" instead.'),
         DeclareLaunchArgument('qos',            default_value='2',                  description='General QoS used for sensor input data: 0=system default, 1=Reliable, 2=Best Effort.'),
@@ -323,7 +385,7 @@ def generate_launch_description():
         # Odometry  /odometry/filtered  /aeirobot/alice_mobile/odom
         DeclareLaunchArgument('visual_odometry',            default_value='false',  description='Launch rtabmap visual odometry node.'),
         DeclareLaunchArgument('icp_odometry',               default_value='false', description='Launch rtabmap icp odometry node.'),
-        DeclareLaunchArgument('odom_topic',                 default_value='/zed_odom',  description='Odometry topic name., /zed_odom '),
+        DeclareLaunchArgument('odom_topic',                 default_value='/odometry/filtered',  description='Odometry topic name., /zed_odom '),
         DeclareLaunchArgument('vo_frame_id',                default_value=LaunchConfiguration('odom_topic'), description='Visual/Icp odometry frame ID for TF.'),
         DeclareLaunchArgument('publish_tf_odom',            default_value='false',  description=''),
         DeclareLaunchArgument('odom_tf_angular_variance',   default_value='0.01',    description='If TF is used to get odometry, this is the default angular variance'),
@@ -335,7 +397,7 @@ def generate_launch_description():
         DeclareLaunchArgument('odom_guess_min_rotation',    default_value='0.0',   description=''),
         
         # imu
-        DeclareLaunchArgument('imu_topic',        default_value='/zed_imu', description='Used with VIO approaches and for SLAM graph optimization (gravity constraints).'),
+        DeclareLaunchArgument('imu_topic',        default_value='/imu/data_raw', description='Used with VIO approaches and for SLAM graph optimization (gravity constraints).'),
         DeclareLaunchArgument('wait_imu_to_init', default_value='false',     description=''),
                
         OpaqueFunction(function=launch_setup)
