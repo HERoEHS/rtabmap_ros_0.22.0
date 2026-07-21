@@ -23,7 +23,6 @@ import os
 ROS_WS = os.environ.get('ROS_WS')
 if not ROS_WS:
     raise RuntimeError("ROS_WS 환경변수가 설정되지 않았습니다. 예: export ROS_WS=/path/to/ws")
-SLAM_MANAGER_CONFIG = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'rtabmap_slam_manager', 'config')
 FEATURE_EXTRACTORS = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'feature_extractors')
 
 from launch import LaunchDescription, Substitution, LaunchContext
@@ -74,15 +73,6 @@ def launch_setup(context, *args, **kwargs):
         DeclareLaunchArgument('qos_gps',         default_value=LaunchConfiguration('qos'), description='Specific QoS used for gps input data: 0=system default, 1=Reliable, 2=Best Effort.'),
 
         SetParameter(name='use_sim_time', value=LaunchConfiguration('use_sim_time')),
-
-        ### SLAM Manager GUI ###
-        Node(
-            package='rtabmap_slam_manager',
-            executable='slam_manager_web',
-            name='slam_manager',
-            output='screen',
-            condition=IfCondition(LaunchConfiguration("slam_manager_gui")),
-        ),
 
         ### ZED 2i 스테레오 → RGBDImage 변환 ###
         Node(
@@ -305,7 +295,6 @@ def generate_launch_description():
         # GUI ON / OFF
         DeclareLaunchArgument('rtabmap_viz',       default_value='true', description='Launch RTAB-Map UI (optional).'),
         DeclareLaunchArgument('rviz',              default_value='true', description='Launch RVIZ (optional).'),
-        DeclareLaunchArgument('slam_manager_gui',  default_value='false',  description='Launch SLAM Manager GUI.'),
 
         ## odom tf 보정
         DeclareLaunchArgument('odom_correction', default_value='true', description='loop closing 상황에서 odom tf 옮길건지 말건지 선택하는 변수'),

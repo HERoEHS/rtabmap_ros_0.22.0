@@ -19,7 +19,6 @@ import os
 ROS_WS = os.environ.get('ROS_WS')
 if not ROS_WS:
     raise RuntimeError("ROS_WS 환경변수가 설정되지 않았습니다. 예: export ROS_WS=/path/to/ws")
-SLAM_MANAGER_CONFIG = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'rtabmap_slam_manager', 'config')
 FEATURE_EXTRACTORS = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'feature_extractors')
 
 from launch import LaunchDescription, Substitution, LaunchContext
@@ -75,15 +74,6 @@ def launch_setup(context, *args, **kwargs):
 
         SetParameter(name='use_sim_time', value=LaunchConfiguration('use_sim_time')),
 
-
-        ### SLAM Manager GUI (먼저 실행 → RTABMAP 연결 시 즉시 pause) ###
-        Node(
-            package='rtabmap_slam_manager',
-            executable='slam_manager_web',
-            name='slam_manager',
-            output='screen',
-            condition=IfCondition(LaunchConfiguration("slam_manager_gui")),
-        ),
 
         ### Visual SLAM (3초 지연 → GUI가 먼저 준비되어 시작 즉시 pause 가능) ###
         TimerAction(period=3.0, actions=[
@@ -240,7 +230,6 @@ def generate_launch_description():
         ## GUI ON / OFF
         DeclareLaunchArgument('rtabmap_viz',       default_value='false', description='Launch RTAB-Map UI (optional).'),
         DeclareLaunchArgument('rviz',              default_value='false', description='Launch RVIZ (optional).'),
-        DeclareLaunchArgument('slam_manager_gui',  default_value='true',  description='Launch SLAM Manager GUI.'),
 
         ## odom tf 보정
         DeclareLaunchArgument('odom_correction', default_value='true', description='loop closing 상황에서 odom tf 옮길건지 말건지 선택하는 변수'),

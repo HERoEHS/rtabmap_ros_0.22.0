@@ -2,3 +2,4 @@
 .settings
 __pycache__
 .omc/*
+.cluade-flow/*
