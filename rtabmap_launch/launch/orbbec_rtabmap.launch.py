@@ -143,7 +143,8 @@ def launch_setup(context, *args, **kwargs):
                 'Mem/RehearsalSimilarity': '0.6',
                 'RGBD/OptimizeMaxError': '3.0',
                 'Optimizer/Robust': 'false',
-                'Rtabmap/DetectionRate': '2',     # LC rate [Hz]
+                # LC rate [Hz] — SuperPoint/SuperGlue가 GPU를 쓰므로 작은 GPU에서 세만틱과 경합 시 낮출 것
+        'Rtabmap/DetectionRate': ParameterValue(LaunchConfiguration('detection_rate'), value_type=str),
                 'Kp/MaxDepth': '15.0',
                 'Vis/MinInliers': '30',
                 'Vis/PnPReprojError': '4',
@@ -208,6 +209,7 @@ def generate_launch_description():
         ## 모드 선택
         DeclareLaunchArgument('localization', default_value='false', description='true: 기존 DB로 위치추정 모드, false: 매핑 모드'),
         DeclareLaunchArgument('force_3dof',   default_value='false', description='true: 평면(3DoF) 강제 — 로봇 탑재 시 사용. 손으로 들고 테스트할 땐 false'),
+        DeclareLaunchArgument('detection_rate', default_value='2', description='loop closure 감지율 [Hz]. GPU 경합 시(라이프롱 스택 노트북 구동) 1 권장'),
 
         ## GUI ON / OFF
         DeclareLaunchArgument('rtabmap_viz', default_value='true', description='Launch RTAB-Map UI (optional).'),
@@ -259,6 +261,19 @@ def generate_launch_description():
                 '/gemini_330_series.launch.py']),
             launch_arguments={'depth_registration': 'true',
                               'enable_frame_sync': 'true',
+                              # 640x480@15 고정: 네이티브(1280x800)는 픽셀 3.3배라 VO 단일스레드가
+                              # 코어 포화로 3.9Hz까지 붕괴 (2026-07-22 풀스택 실측). 해상도가 최대 지렛대
+                              'color_width': '640', 'color_height': '480', 'color_fps': '15',
+                              'depth_width': '640', 'depth_height': '480', 'depth_fps': '15',
+                              # depth 노이즈 필터 (실기 TSDF 메시 품질 — 시뮬 대비 괴리 완화)
+                              'enable_spatial_filter': 'true',
+                              'enable_temporal_filter': 'true',
+                              # Reliable 발행: rtabmap(Best Effort 구독)과 Khronos(Reliable 구독) 모두 호환.
+                              # sensor_data(Best Effort) 기본값이면 Khronos가 camera_info를 못 받아 초기화에 갇힘
+                              'color_qos': 'default',
+                              'depth_qos': 'default',
+                              'color_camera_info_qos': 'default',
+                              'depth_camera_info_qos': 'default',
                               'enable_accel': LaunchConfiguration('use_imu'),
                               'enable_gyro': LaunchConfiguration('use_imu'),
                               'enable_sync_output_accel_gyro': LaunchConfiguration('use_imu')}.items(),
