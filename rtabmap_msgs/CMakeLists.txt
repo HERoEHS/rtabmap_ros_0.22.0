@@ -71,6 +71,7 @@ set(srv_files
    "srv/GlobalBundleAdjustment.srv"
    "srv/CleanupLocalGrids.srv"
    "srv/RemoveFeaturesInBox.srv"
+   "srv/RemoveFeatures.srv"
 )
 
 ## Generate messages and services

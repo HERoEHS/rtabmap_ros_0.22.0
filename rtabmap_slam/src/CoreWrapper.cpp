@@ -684,6 +684,7 @@ CoreWrapper::CoreWrapper(const rclcpp::NodeOptions & options) :
 	cleanupLocalGridsSrv_ = this->create_service<rtabmap_msgs::srv::CleanupLocalGrids>(servicePrefix + "cleanup_local_grids", std::bind(&CoreWrapper::cleanupLocalGridsCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
 	maintenanceCallbackGroup_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 	removeFeaturesInBoxSrv_ = this->create_service<rtabmap_msgs::srv::RemoveFeaturesInBox>(servicePrefix + "remove_features_in_box", std::bind(&CoreWrapper::removeFeaturesInBoxCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), maintenanceCallbackGroup_);
+	removeFeaturesSrv_ = this->create_service<rtabmap_msgs::srv::RemoveFeatures>(servicePrefix + "remove_features", std::bind(&CoreWrapper::removeFeaturesCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), maintenanceCallbackGroup_);
 	setModeLocalizationSrv_ = this->create_service<std_srvs::srv::Empty>(servicePrefix + "set_mode_localization", std::bind(&CoreWrapper::setModeLocalizationCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
 	setModeMappingSrv_ = this->create_service<std_srvs::srv::Empty>(servicePrefix + "set_mode_mapping", std::bind(&CoreWrapper::setModeMappingCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
 	getNodeDataSrv_ = this->create_service<rtabmap_msgs::srv::GetNodeData>(servicePrefix + "get_node_data", std::bind(&CoreWrapper::getNodeDataCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
@@ -3629,6 +3630,42 @@ void CoreWrapper::removeFeaturesInBoxCallback(
 	res->nodes_affected = (int)removed.size();
 	res->words_removed = total;
 	RCLCPP_INFO(get_logger(), "RemoveFeaturesInBox: %d nodes affected, %d unique words %s",
+			res->nodes_affected, res->words_removed, req->dry_run?"would be removed (dry run)":"removed");
+}
+
+void CoreWrapper::removeFeaturesCallback(
+		const std::shared_ptr<rmw_request_id_t>,
+		const std::shared_ptr<rtabmap_msgs::srv::RemoveFeatures::Request> req,
+		std::shared_ptr<rtabmap_msgs::srv::RemoveFeatures::Response> res)
+{
+	// HERoEHS lifelong: free-space 증거 노드가 지목한 (노드, word) 목록 제거.
+	// 전용 콜백 그룹 — processAsync/process()와 syncDataMutex_로 직렬화.
+	if(req->node_ids.size() != req->word_ids.size())
+	{
+		RCLCPP_ERROR(get_logger(), "RemoveFeatures: node_ids(%zu) != word_ids(%zu) — 병렬 배열이어야 함",
+				req->node_ids.size(), req->word_ids.size());
+		res->nodes_affected = 0;
+		res->words_removed = 0;
+		return;
+	}
+	UScopeMutex lock(syncDataMutex_);
+	int floorPerNode = req->floor_per_node > 0 ? req->floor_per_node : 50;
+	std::map<int, std::vector<int> > wordsPerNode;
+	for(size_t i=0; i<req->node_ids.size(); ++i)
+	{
+		wordsPerNode[req->node_ids[i]].push_back(req->word_ids[i]);
+	}
+	RCLCPP_INFO(get_logger(), "RemoveFeatures: %zu pairs over %zu nodes, floor=%d dry_run=%d",
+			req->node_ids.size(), wordsPerNode.size(), floorPerNode, req->dry_run?1:0);
+	std::map<int, int> removed = rtabmap_.removeFeaturesByWords(wordsPerNode, floorPerNode, req->dry_run);
+	int total = 0;
+	for(std::map<int, int>::iterator iter=removed.begin(); iter!=removed.end(); ++iter)
+	{
+		total += iter->second;
+	}
+	res->nodes_affected = (int)removed.size();
+	res->words_removed = total;
+	RCLCPP_INFO(get_logger(), "RemoveFeatures: %d nodes affected, %d unique words %s",
 			res->nodes_affected, res->words_removed, req->dry_run?"would be removed (dry run)":"removed");
 }
 

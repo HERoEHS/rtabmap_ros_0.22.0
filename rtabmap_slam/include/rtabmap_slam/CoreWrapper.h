@@ -75,6 +75,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap_msgs/srv/global_bundle_adjustment.hpp"
 #include "rtabmap_msgs/srv/cleanup_local_grids.hpp"
 #include "rtabmap_msgs/srv/remove_features_in_box.hpp"
+#include "rtabmap_msgs/srv/remove_features.hpp"
 #include "rtabmap_msgs/srv/add_link.hpp"
 
 #include "rtabmap_util/MapsManager.h"
@@ -258,6 +259,8 @@ private:
 	void cleanupLocalGridsCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::CleanupLocalGrids::Request>, std::shared_ptr<rtabmap_msgs::srv::CleanupLocalGrids::Response>);
 	// HERoEHS lifelong: Khronos 소멸 이벤트 기반 특징 제거 (map 프레임 AABB, 가역 아카이브)
 	void removeFeaturesInBoxCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::RemoveFeaturesInBox::Request>, std::shared_ptr<rtabmap_msgs::srv::RemoveFeaturesInBox::Response>);
+	// HERoEHS lifelong: (노드, word) 직접 지목 제거 — free-space 증거 경로
+	void removeFeaturesCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::RemoveFeatures::Request>, std::shared_ptr<rtabmap_msgs::srv::RemoveFeatures::Response>);
 	void setModeLocalizationCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
 	void setModeMappingCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
 	void setLogDebug(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
@@ -401,6 +404,7 @@ private:
 	rclcpp::Service<rtabmap_msgs::srv::GlobalBundleAdjustment>::SharedPtr globalBundleAdjustmentSrv_;
 	rclcpp::Service<rtabmap_msgs::srv::CleanupLocalGrids>::SharedPtr cleanupLocalGridsSrv_;
 	rclcpp::Service<rtabmap_msgs::srv::RemoveFeaturesInBox>::SharedPtr removeFeaturesInBoxSrv_;
+	rclcpp::Service<rtabmap_msgs::srv::RemoveFeatures>::SharedPtr removeFeaturesSrv_;
 	rclcpp::Service<std_srvs::srv::Empty>::SharedPtr setModeLocalizationSrv_;
 	rclcpp::Service<std_srvs::srv::Empty>::SharedPtr setModeMappingSrv_;
 	rclcpp::Service<std_srvs::srv::Empty>::SharedPtr setLogDebugSrv_;
