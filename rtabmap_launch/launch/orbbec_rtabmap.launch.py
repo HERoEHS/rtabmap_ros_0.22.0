@@ -50,7 +50,8 @@ def launch_setup(context, *args, **kwargs):
     common_params = {
         'frame_id': LaunchConfiguration('frame_id'),
         'subscribe_depth': True,
-        'subscribe_odom_info': True,
+        # bag 재생 검증 시 false (bag에 odom_info 미수록 — true면 동기화 무한 대기)
+        'subscribe_odom_info': LaunchConfiguration('subscribe_odom_info'),
         'approx_sync': LaunchConfiguration('approx_sync'),
         'wait_for_transform': LaunchConfiguration('wait_for_transform'),
         'topic_queue_size': LaunchConfiguration('topic_queue_size'),
@@ -80,6 +81,7 @@ def launch_setup(context, *args, **kwargs):
 
         ### Visual Odometry (rtabmap 제공 RGB-D VO — 기본 GFTT, SuperPoint는 rtabmap 노드 전용) ###
         Node(
+            condition=IfCondition(LaunchConfiguration('launch_odometry')),
             package='rtabmap_odom', executable='rgbd_odometry', name='rgbd_odometry', output='screen',
             parameters=[dict(common_params, **{
                 'wait_imu_to_init': LaunchConfiguration('wait_imu_to_init'),
@@ -222,6 +224,10 @@ def generate_launch_description():
         DeclareLaunchArgument('odom_correction', default_value='true', description='loop closing 상황에서 odom tf 옮길건지 말건지 선택하는 변수'),
 
         DeclareLaunchArgument('use_sim_time', default_value='false', description='Use simulation (Gazebo) clock if true'),
+        DeclareLaunchArgument('launch_odometry', default_value='true',
+                              description='rgbd_odometry 실행 여부. bag 재생 검증(odom이 bag에 있음)이면 false'),
+        DeclareLaunchArgument('subscribe_odom_info', default_value='true',
+                              description='odom_info 구독. bag 재생 검증(미수록)이면 false'),
         DeclareLaunchArgument('log_level',    default_value='info', description="ROS logging level (debug, info, warn, error)."),
 
         # Config files

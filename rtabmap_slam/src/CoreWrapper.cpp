@@ -685,6 +685,7 @@ CoreWrapper::CoreWrapper(const rclcpp::NodeOptions & options) :
 	maintenanceCallbackGroup_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 	removeFeaturesInBoxSrv_ = this->create_service<rtabmap_msgs::srv::RemoveFeaturesInBox>(servicePrefix + "remove_features_in_box", std::bind(&CoreWrapper::removeFeaturesInBoxCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), maintenanceCallbackGroup_);
 	removeFeaturesSrv_ = this->create_service<rtabmap_msgs::srv::RemoveFeatures>(servicePrefix + "remove_features", std::bind(&CoreWrapper::removeFeaturesCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), maintenanceCallbackGroup_);
+	ingestCurrentFrameSrv_ = this->create_service<rtabmap_msgs::srv::IngestCurrentFrame>(servicePrefix + "ingest_current_frame", std::bind(&CoreWrapper::ingestCurrentFrameCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), maintenanceCallbackGroup_);
 	setModeLocalizationSrv_ = this->create_service<std_srvs::srv::Empty>(servicePrefix + "set_mode_localization", std::bind(&CoreWrapper::setModeLocalizationCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
 	setModeMappingSrv_ = this->create_service<std_srvs::srv::Empty>(servicePrefix + "set_mode_mapping", std::bind(&CoreWrapper::setModeMappingCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
 	getNodeDataSrv_ = this->create_service<rtabmap_msgs::srv::GetNodeData>(servicePrefix + "get_node_data", std::bind(&CoreWrapper::getNodeDataCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
@@ -3667,6 +3668,39 @@ void CoreWrapper::removeFeaturesCallback(
 	res->words_removed = total;
 	RCLCPP_INFO(get_logger(), "RemoveFeatures: %d nodes affected, %d unique words %s",
 			res->nodes_affected, res->words_removed, req->dry_run?"would be removed (dry run)":"removed");
+}
+
+void CoreWrapper::ingestCurrentFrameCallback(
+		const std::shared_ptr<rmw_request_id_t>,
+		const std::shared_ptr<rtabmap_msgs::srv::IngestCurrentFrame::Request> req,
+		std::shared_ptr<rtabmap_msgs::srv::IngestCurrentFrame::Response> res)
+{
+	// HERoEHS lifelong: 등장(추가) 경로 — CoreWrapper가 쥔 최신 동기화 프레임을
+	// 현재 위치추정 pose(보정×odom)로 영구 노드 편입. syncDataMutex_로 처리와 직렬화.
+	UScopeMutex lock(syncDataMutex_);
+	res->node_id = 0;
+	if(syncData_.stamp.nanoseconds() == 0 || syncData_.odom.isNull())
+	{
+		res->status = "no synced frame yet";
+		return;
+	}
+	double age = (this->now() - syncData_.stamp).seconds();
+	if(age > 2.0)
+	{
+		res->status = uFormat("stale frame (%.1fs old)", age);
+		return;
+	}
+	rtabmap::Transform mapPose = rtabmap_.getMapCorrection() * syncData_.odom;
+	double lv = req->linear_variance > 0.0 ? req->linear_variance : 0.01;
+	double av = req->angular_variance > 0.0 ? req->angular_variance : 0.005;
+	cv::Mat cov = cv::Mat::zeros(6, 6, CV_64FC1);
+	cov.at<double>(0,0) = cov.at<double>(1,1) = cov.at<double>(2,2) = lv;
+	cov.at<double>(3,3) = cov.at<double>(4,4) = cov.at<double>(5,5) = av;
+	int id = rtabmap_.ingestNode(syncData_.data, mapPose, cov);
+	res->node_id = id;
+	res->status = id > 0 ? "ok" : "ingest failed (see rtabmap log)";
+	RCLCPP_INFO(get_logger(), "IngestCurrentFrame: %s (node_id=%d, frame age=%.2fs)",
+			res->status.c_str(), id, age);
 }
 
 void CoreWrapper::cleanupLocalGridsCallback(

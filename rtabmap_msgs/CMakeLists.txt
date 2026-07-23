@@ -72,6 +72,7 @@ set(srv_files
    "srv/CleanupLocalGrids.srv"
    "srv/RemoveFeaturesInBox.srv"
    "srv/RemoveFeatures.srv"
+   "srv/IngestCurrentFrame.srv"
 )
 
 ## Generate messages and services

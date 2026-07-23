@@ -1,0 +1,8 @@
+# HERoEHS lifelong: 현재(최신 동기화) 프레임을 영구 노드로 편입 — 등장(추가) 경로.
+# CoreWrapper가 들고 있는 syncData_(최신 SensorData)와 현재 위치추정 pose(보정×odom)를
+# 사용하므로 요청에 데이터 수송이 없다. 링크 공분산은 넉넉히(위치추정 오차 흡수).
+float64 linear_variance     # 링크 위치 분산 [m^2] (0 이하면 기본 0.01)
+float64 angular_variance    # 링크 자세 분산 [rad^2] (0 이하면 기본 0.005)
+---
+int32 node_id               # 생성된 노드 id (실패 시 0)
+string status

@@ -76,6 +76,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap_msgs/srv/cleanup_local_grids.hpp"
 #include "rtabmap_msgs/srv/remove_features_in_box.hpp"
 #include "rtabmap_msgs/srv/remove_features.hpp"
+#include "rtabmap_msgs/srv/ingest_current_frame.hpp"
 #include "rtabmap_msgs/srv/add_link.hpp"
 
 #include "rtabmap_util/MapsManager.h"
@@ -261,6 +262,8 @@ private:
 	void removeFeaturesInBoxCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::RemoveFeaturesInBox::Request>, std::shared_ptr<rtabmap_msgs::srv::RemoveFeaturesInBox::Response>);
 	// HERoEHS lifelong: (노드, word) 직접 지목 제거 — free-space 증거 경로
 	void removeFeaturesCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::RemoveFeatures::Request>, std::shared_ptr<rtabmap_msgs::srv::RemoveFeatures::Response>);
+	// HERoEHS lifelong: 현재 프레임 영구 노드 편입 — 등장(추가) 경로
+	void ingestCurrentFrameCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::IngestCurrentFrame::Request>, std::shared_ptr<rtabmap_msgs::srv::IngestCurrentFrame::Response>);
 	void setModeLocalizationCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
 	void setModeMappingCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
 	void setLogDebug(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
@@ -405,6 +408,7 @@ private:
 	rclcpp::Service<rtabmap_msgs::srv::CleanupLocalGrids>::SharedPtr cleanupLocalGridsSrv_;
 	rclcpp::Service<rtabmap_msgs::srv::RemoveFeaturesInBox>::SharedPtr removeFeaturesInBoxSrv_;
 	rclcpp::Service<rtabmap_msgs::srv::RemoveFeatures>::SharedPtr removeFeaturesSrv_;
+	rclcpp::Service<rtabmap_msgs::srv::IngestCurrentFrame>::SharedPtr ingestCurrentFrameSrv_;
 	rclcpp::Service<std_srvs::srv::Empty>::SharedPtr setModeLocalizationSrv_;
 	rclcpp::Service<std_srvs::srv::Empty>::SharedPtr setModeMappingSrv_;
 	rclcpp::Service<std_srvs::srv::Empty>::SharedPtr setLogDebugSrv_;
