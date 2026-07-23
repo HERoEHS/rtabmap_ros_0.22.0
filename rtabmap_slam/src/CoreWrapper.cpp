@@ -3611,7 +3611,7 @@ void CoreWrapper::removeFeaturesInBoxCallback(
 	// 전용 콜백 그룹에서 돌므로 processAsync/process()와 syncDataMutex_로 직렬화한다
 	// (processingCallbackGroup_에 넣으면 0초 syncTimer_에 밀려 영원히 디스패치 안 됨 — 실측).
 	UScopeMutex lock(syncDataMutex_);
-	int floorPerNode = req->floor_per_node > 0 ? req->floor_per_node : 50;
+	int floorPerNode = req->floor_per_node > 0 ? req->floor_per_node : (req->floor_per_node < 0 ? 0 : 50); // 음수 = 하한 없음 (노드 은퇴 전용)
 	RCLCPP_INFO(get_logger(),
 			"RemoveFeaturesInBox: box(%.2f,%.2f,%.2f)-(%.2f,%.2f,%.2f) floor=%d dry_run=%d",
 			req->box_min.x, req->box_min.y, req->box_min.z,
@@ -3649,7 +3649,7 @@ void CoreWrapper::removeFeaturesCallback(
 		return;
 	}
 	UScopeMutex lock(syncDataMutex_);
-	int floorPerNode = req->floor_per_node > 0 ? req->floor_per_node : 50;
+	int floorPerNode = req->floor_per_node > 0 ? req->floor_per_node : (req->floor_per_node < 0 ? 0 : 50); // 음수 = 하한 없음 (노드 은퇴 전용)
 	std::map<int, std::vector<int> > wordsPerNode;
 	for(size_t i=0; i<req->node_ids.size(); ++i)
 	{

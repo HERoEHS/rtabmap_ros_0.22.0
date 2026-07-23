@@ -3,7 +3,7 @@
 # node_ids/word_ids는 같은 길이의 병렬 배열. DB에서는 Feature_archive로 이동(가역).
 int32[] node_ids
 int32[] word_ids
-int32 floor_per_node    # 노드별 남길 최소 유니크 단어 수 (0 이하면 기본 50)
+int32 floor_per_node    # 노드별 남길 최소 유니크 단어 수 (0=기본 50, 음수=하한 없음 — 노드 은퇴 전용)
 bool dry_run            # true면 수정 없이 집계만
 ---
 int32 nodes_affected    # 특징이 제거된(될) 노드 수
