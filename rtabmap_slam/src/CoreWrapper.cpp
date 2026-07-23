@@ -682,6 +682,8 @@ CoreWrapper::CoreWrapper(const rclcpp::NodeOptions & options) :
 	detectMoreLoopClosuresSrv_ = this->create_service<rtabmap_msgs::srv::DetectMoreLoopClosures>(servicePrefix + "detect_more_loop_closures", std::bind(&CoreWrapper::detectMoreLoopClosuresCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
 	globalBundleAdjustmentSrv_ = this->create_service<rtabmap_msgs::srv::GlobalBundleAdjustment>(servicePrefix + "global_bundle_adjustment", std::bind(&CoreWrapper::globalBundleAdjustmentCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
 	cleanupLocalGridsSrv_ = this->create_service<rtabmap_msgs::srv::CleanupLocalGrids>(servicePrefix + "cleanup_local_grids", std::bind(&CoreWrapper::cleanupLocalGridsCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
+	maintenanceCallbackGroup_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+	removeFeaturesInBoxSrv_ = this->create_service<rtabmap_msgs::srv::RemoveFeaturesInBox>(servicePrefix + "remove_features_in_box", std::bind(&CoreWrapper::removeFeaturesInBoxCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), maintenanceCallbackGroup_);
 	setModeLocalizationSrv_ = this->create_service<std_srvs::srv::Empty>(servicePrefix + "set_mode_localization", std::bind(&CoreWrapper::setModeLocalizationCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
 	setModeMappingSrv_ = this->create_service<std_srvs::srv::Empty>(servicePrefix + "set_mode_mapping", std::bind(&CoreWrapper::setModeMappingCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
 	getNodeDataSrv_ = this->create_service<rtabmap_msgs::srv::GetNodeData>(servicePrefix + "get_node_data", std::bind(&CoreWrapper::getNodeDataCallback, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), rclcpp::ServicesQoS(), processingCallbackGroup_);
@@ -3597,6 +3599,37 @@ void CoreWrapper::detectMoreLoopClosuresCallback(
 			republishMaps();
 		}
 	}
+}
+
+void CoreWrapper::removeFeaturesInBoxCallback(
+		const std::shared_ptr<rmw_request_id_t>,
+		const std::shared_ptr<rtabmap_msgs::srv::RemoveFeaturesInBox::Request> req,
+		std::shared_ptr<rtabmap_msgs::srv::RemoveFeaturesInBox::Response> res)
+{
+	// HERoEHS lifelong: Khronos 소멸 이벤트 → map 프레임 AABB 특징 제거(가역 아카이브).
+	// 전용 콜백 그룹에서 돌므로 processAsync/process()와 syncDataMutex_로 직렬화한다
+	// (processingCallbackGroup_에 넣으면 0초 syncTimer_에 밀려 영원히 디스패치 안 됨 — 실측).
+	UScopeMutex lock(syncDataMutex_);
+	int floorPerNode = req->floor_per_node > 0 ? req->floor_per_node : 50;
+	RCLCPP_INFO(get_logger(),
+			"RemoveFeaturesInBox: box(%.2f,%.2f,%.2f)-(%.2f,%.2f,%.2f) floor=%d dry_run=%d",
+			req->box_min.x, req->box_min.y, req->box_min.z,
+			req->box_max.x, req->box_max.y, req->box_max.z,
+			floorPerNode, req->dry_run?1:0);
+	std::map<int, int> removed = rtabmap_.removeFeaturesInBox(
+			cv::Point3f(req->box_min.x, req->box_min.y, req->box_min.z),
+			cv::Point3f(req->box_max.x, req->box_max.y, req->box_max.z),
+			floorPerNode,
+			req->dry_run);
+	int total = 0;
+	for(std::map<int, int>::iterator iter=removed.begin(); iter!=removed.end(); ++iter)
+	{
+		total += iter->second;
+	}
+	res->nodes_affected = (int)removed.size();
+	res->words_removed = total;
+	RCLCPP_INFO(get_logger(), "RemoveFeaturesInBox: %d nodes affected, %d unique words %s",
+			res->nodes_affected, res->words_removed, req->dry_run?"would be removed (dry run)":"removed");
 }
 
 void CoreWrapper::cleanupLocalGridsCallback(

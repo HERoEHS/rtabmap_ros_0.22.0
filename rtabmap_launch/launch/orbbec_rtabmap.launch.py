@@ -86,7 +86,9 @@ def launch_setup(context, *args, **kwargs):
                 'Reg/Force3DoF': ParameterValue(force_3dof, value_type=str),
             })],
             remappings=remappings,
-            arguments=["--ros-args", "--log-level", ['rgbd_odometry:=', LaunchConfiguration('log_level')]],
+            # 로거는 네임스페이스 포함 이름(rtabmap.rgbd_odometry) — 노드명만 쓰면 무효과 (2026-07-23 실측)
+            arguments=["--ros-args", "--log-level",
+                       [LaunchConfiguration('namespace'), '.rgbd_odometry:=', LaunchConfiguration('log_level')]],
             prefix=LaunchConfiguration('launch_prefix'),
             namespace=LaunchConfiguration('namespace')),
 
@@ -174,7 +176,8 @@ def launch_setup(context, *args, **kwargs):
             arguments=[
                 LaunchConfiguration('rtabmap_args'),
                 PythonExpression(["'' if '", localization, "' == 'true' else '-d'"]),
-                "--ros-args", "--log-level", ['rtabmap:=', LaunchConfiguration('log_level')]],
+                "--ros-args", "--log-level",
+                [LaunchConfiguration('namespace'), '.rtabmap:=', LaunchConfiguration('log_level')]],
             prefix=LaunchConfiguration('launch_prefix'),
             namespace=LaunchConfiguration('namespace')),
         ]),  # TimerAction 닫기

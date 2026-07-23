@@ -74,6 +74,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap_msgs/srv/detect_more_loop_closures.hpp"
 #include "rtabmap_msgs/srv/global_bundle_adjustment.hpp"
 #include "rtabmap_msgs/srv/cleanup_local_grids.hpp"
+#include "rtabmap_msgs/srv/remove_features_in_box.hpp"
 #include "rtabmap_msgs/srv/add_link.hpp"
 
 #include "rtabmap_util/MapsManager.h"
@@ -255,6 +256,8 @@ private:
 	void detectMoreLoopClosuresCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::DetectMoreLoopClosures::Request>, std::shared_ptr<rtabmap_msgs::srv::DetectMoreLoopClosures::Response>);
 	void globalBundleAdjustmentCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::GlobalBundleAdjustment::Request>, std::shared_ptr<rtabmap_msgs::srv::GlobalBundleAdjustment::Response>);
 	void cleanupLocalGridsCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::CleanupLocalGrids::Request>, std::shared_ptr<rtabmap_msgs::srv::CleanupLocalGrids::Response>);
+	// HERoEHS lifelong: Khronos 소멸 이벤트 기반 특징 제거 (map 프레임 AABB, 가역 아카이브)
+	void removeFeaturesInBoxCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<rtabmap_msgs::srv::RemoveFeaturesInBox::Request>, std::shared_ptr<rtabmap_msgs::srv::RemoveFeaturesInBox::Response>);
 	void setModeLocalizationCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
 	void setModeMappingCallback(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
 	void setLogDebug(const std::shared_ptr<rmw_request_id_t>, const std::shared_ptr<std_srvs::srv::Empty::Request>, std::shared_ptr<std_srvs::srv::Empty::Response>);
@@ -397,6 +400,7 @@ private:
 	rclcpp::Service<rtabmap_msgs::srv::DetectMoreLoopClosures>::SharedPtr detectMoreLoopClosuresSrv_;
 	rclcpp::Service<rtabmap_msgs::srv::GlobalBundleAdjustment>::SharedPtr globalBundleAdjustmentSrv_;
 	rclcpp::Service<rtabmap_msgs::srv::CleanupLocalGrids>::SharedPtr cleanupLocalGridsSrv_;
+	rclcpp::Service<rtabmap_msgs::srv::RemoveFeaturesInBox>::SharedPtr removeFeaturesInBoxSrv_;
 	rclcpp::Service<std_srvs::srv::Empty>::SharedPtr setModeLocalizationSrv_;
 	rclcpp::Service<std_srvs::srv::Empty>::SharedPtr setModeMappingSrv_;
 	rclcpp::Service<std_srvs::srv::Empty>::SharedPtr setLogDebugSrv_;
@@ -501,6 +505,11 @@ private:
 	LocalizationStatusTask localizationDiagnostic_;
 
 	rclcpp::CallbackGroup::SharedPtr processingCallbackGroup_;
+	// HERoEHS lifelong: 유지보수 서비스 전용 그룹. processingCallbackGroup_에는 0초 주기
+	// syncTimer_가 상주해 rclcpp 실행기가 타이머를 항상 먼저 집으므로 같은 그룹의 서비스는
+	// 영원히 디스패치되지 않는다(실측 — 업스트림 서비스들도 동일하게 굶음). 별도 그룹 +
+	// syncDataMutex_ 직렬화로 해결.
+	rclcpp::CallbackGroup::SharedPtr maintenanceCallbackGroup_;
 	struct SyncData {
 		bool valid;
 		rclcpp::Time stamp;

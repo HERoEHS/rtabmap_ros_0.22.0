@@ -1,0 +1,9 @@
+# HERoEHS lifelong: map 프레임 AABB 안의 시각 특징(visual word)을 노드들에서 제거.
+# Khronos 소멸 이벤트 → rtabmap DB 유지보수 경로. DB에서는 Feature_archive로 이동(가역).
+geometry_msgs/Point box_min
+geometry_msgs/Point box_max
+int32 floor_per_node    # 노드별 남길 최소 유니크 단어 수 (0 이하면 기본 50)
+bool dry_run            # true면 수정 없이 집계만
+---
+int32 nodes_affected    # 특징이 제거된(될) 노드 수
+int32 words_removed     # 제거된(될) 유니크 단어 총수
