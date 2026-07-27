@@ -86,6 +86,9 @@ def launch_setup(context, *args, **kwargs):
             parameters=[dict(common_params, **{
                 'wait_imu_to_init': LaunchConfiguration('wait_imu_to_init'),
                 'Reg/Force3DoF': ParameterValue(force_3dof, value_type=str),
+                # 상실 시 즉시 리셋: 발산한 가짜 궤적이 지속되며 rtabmap 메모리를
+                # 폭주시킨 사고(setup 3.29) 재발 방지 — 리셋 후 재위치추정으로 복구
+                'Odom/ResetCountdown': '1',
             })],
             remappings=remappings,
             # 로거는 네임스페이스 포함 이름(rtabmap.rgbd_odometry) — 노드명만 쓰면 무효과 (2026-07-23 실측)
@@ -114,6 +117,9 @@ def launch_setup(context, *args, **kwargs):
                 # ============================================================
                 'Mem/IncrementalMemory': ParameterValue(
                     PythonExpression(["'false' if '", localization, "' == 'true' else 'true'"]), value_type=str),
+                # WM 노드 수 상한(0=무제한). VO 발산 등으로 전역을 가상 이동해도
+                # WM 캐시가 맵 전체로 퍼지지 못하게 하는 안전벨트 (setup 3.29)
+                'Rtabmap/MemoryThr': ParameterValue(LaunchConfiguration('memory_thr'), value_type=str),
                 'Mem/InitWMWithAllNodes': ParameterValue(
                     PythonExpression(["'true' if '", localization, "' == 'true' else 'false'"]), value_type=str),
 
@@ -215,6 +221,8 @@ def generate_launch_description():
         DeclareLaunchArgument('localization', default_value='false', description='true: 기존 DB로 위치추정 모드, false: 매핑 모드'),
         DeclareLaunchArgument('force_3dof',   default_value='false', description='true: 평면(3DoF) 강제 — 로봇 탑재 시 사용. 손으로 들고 테스트할 땐 false'),
         DeclareLaunchArgument('detection_rate', default_value='2', description='loop closure 감지율 [Hz]. GPU 경합 시(라이프롱 스택 노트북 구동) 1 권장'),
+        DeclareLaunchArgument('memory_thr', default_value='0',
+                              description='Rtabmap/MemoryThr — WM 노드 수 상한(0=무제한). 장시간 localization 운영 시 350 권장 (setup 3.29)'),
 
         ## GUI ON / OFF
         DeclareLaunchArgument('rtabmap_viz', default_value='true', description='Launch RTAB-Map UI (optional).'),
