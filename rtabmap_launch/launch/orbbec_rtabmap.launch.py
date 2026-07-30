@@ -155,14 +155,17 @@ def launch_setup(context, *args, **kwargs):
                 'Optimizer/Robust': 'false',
                 # LC rate [Hz] — SuperPoint/SuperGlue가 GPU를 쓰므로 작은 GPU에서 세만틱과 경합 시 낮출 것
         'Rtabmap/DetectionRate': ParameterValue(LaunchConfiguration('detection_rate'), value_type=str),
-                'Kp/MaxDepth': '15.0',
+                # 오탐 LC 대책 3종 (setup 3.69): 순간이동-복귀 반복의 원인이
+                # "느슨한 PnP가 부풀린 인라이어"로 지목됨. 336L 유효거리(~10m) 밖
+                # 특징은 depth 노이즈가 커 나쁜 3D 점이 되는데 4px 관용이 통과시켰다.
+                'Kp/MaxDepth': '10.0',        # 15→10: 센서 신뢰 거리로 제한
                 'Vis/MinInliers': '30',
-                'Vis/PnPReprojError': '4',
+                'Vis/PnPReprojError': '2',    # 4→2(기본값 복원): 한계 대응 인라이어 산입 차단
                 'RGBD/ProximityPathFilteringRadius': '2.0',
                 'RGBD/ProximityMaxGraphDepth': '100',
                 'RGBD/LocalRadius': '15.0',
                 'Rtabmap/LoopThr': '0.11',
-                'RGBD/MaxOdomCacheSize': '10',
+                'RGBD/MaxOdomCacheSize': '30',  # 10→30: 오탐 사후 기각(OptimizeMaxError) 검사창 확대
 
                 ## 레전드 파라미터 ##
                 'SuperPoint/Threshold': '0.005',
@@ -187,7 +190,18 @@ def launch_setup(context, *args, **kwargs):
                 "--ros-args", "--log-level",
                 [LaunchConfiguration('namespace'), '.rtabmap:=', LaunchConfiguration('log_level')]],
             prefix=LaunchConfiguration('launch_prefix'),
-            namespace=LaunchConfiguration('namespace')),
+            namespace=LaunchConfiguration('namespace'),
+            # HERoEHS lifelong: 스레드 풀 상한 (CPU 예산 — setup 3.44).
+            # OpenCV/PCL/BLAS가 제한 없이 코어 수만큼 풀을 열어 스레드 433개 중
+            # 36개가 각 3~9%씩 소모 중이었다(실측 206%). 상위 런치의
+            # SetEnvironmentVariable은 이 노드가 TimerAction 안에 있어 스코프가
+            # 닿지 않으므로 노드에 직접 주입한다.
+            # 값은 코어 수가 아니라 **CPU 예산**에서 유도 — Orin/Thor 이식 가능.
+            additional_env={
+                'OMP_NUM_THREADS': LaunchConfiguration('rtabmap_threads'),
+                'OPENBLAS_NUM_THREADS': LaunchConfiguration('rtabmap_threads'),
+                'MKL_NUM_THREADS': LaunchConfiguration('rtabmap_threads'),
+            }),
         ]),  # TimerAction 닫기
 
         ### Rtabmap GUI ###
@@ -218,11 +232,16 @@ def generate_launch_description():
 
         # Arguments
         ## 모드 선택
-        DeclareLaunchArgument('localization', default_value='false', description='true: 기존 DB로 위치추정 모드, false: 매핑 모드'),
+        DeclareLaunchArgument('localization', default_value='true', description='true: 기존 DB로 위치추정 모드, false: 매핑 모드'),
         DeclareLaunchArgument('force_3dof',   default_value='false', description='true: 평면(3DoF) 강제 — 로봇 탑재 시 사용. 손으로 들고 테스트할 땐 false'),
         DeclareLaunchArgument('detection_rate', default_value='2', description='loop closure 감지율 [Hz]. GPU 경합 시(라이프롱 스택 노트북 구동) 1 권장'),
         DeclareLaunchArgument('memory_thr', default_value='0',
                               description='Rtabmap/MemoryThr — WM 노드 수 상한(0=무제한). 장시간 localization 운영 시 350 권장 (setup 3.29)'),
+        DeclareLaunchArgument('rtabmap_threads', default_value='0',
+                              description='rtabmap의 OpenCV/PCL/BLAS 스레드 풀 상한. '
+                                          '0=제한 없음(코어 수만큼 = 상류 기본). CPU 예산이 있는 '
+                                          '배포에선 4 권장 — 코어 수가 아니라 예산에서 유도한 값이라 '
+                                          'Orin/Thor 이식 가능 (setup 3.44)'),
 
         ## GUI ON / OFF
         DeclareLaunchArgument('rtabmap_viz', default_value='true', description='Launch RTAB-Map UI (optional).'),
