@@ -201,6 +201,12 @@ def launch_setup(context, *args, **kwargs):
                 'OMP_NUM_THREADS': LaunchConfiguration('rtabmap_threads'),
                 'OPENBLAS_NUM_THREADS': LaunchConfiguration('rtabmap_threads'),
                 'MKL_NUM_THREADS': LaunchConfiguration('rtabmap_threads'),
+                # HERoEHS lifelong: glibc 아레나 상한 (메모리 성장 대책 — setup 3.78).
+                # rtabmap은 스레드 433개(3.44 실측)라 아레나가 코어 수 기준으로 열려
+                # 할당·해제 churn이 OS로 반환되지 않고 RSS로 쌓인다. khronos는 3.30에서
+                # 같은 처방(MALLOC_ARENA_MAX=4)으로 GB급 성장을 잡았는데 rtabmap엔
+                # 미적용 상태였다. glibc는 0을 범위 밖으로 무시하므로 0 = 미적용(A/B용).
+                'MALLOC_ARENA_MAX': LaunchConfiguration('rtabmap_arena_max'),
             }),
         ]),  # TimerAction 닫기
 
@@ -242,6 +248,10 @@ def generate_launch_description():
                                           '0=제한 없음(코어 수만큼 = 상류 기본). CPU 예산이 있는 '
                                           '배포에선 4 권장 — 코어 수가 아니라 예산에서 유도한 값이라 '
                                           'Orin/Thor 이식 가능 (setup 3.44)'),
+        DeclareLaunchArgument('rtabmap_arena_max', default_value='0',
+                              description='rtabmap 노드의 glibc MALLOC_ARENA_MAX. '
+                                          '0=미적용(glibc가 범위 밖으로 무시 = 상류 기본). '
+                                          '메모리 성장 대책은 4 — khronos 검증 처방과 동일 (setup 3.78)'),
 
         ## GUI ON / OFF
         DeclareLaunchArgument('rtabmap_viz', default_value='true', description='Launch RTAB-Map UI (optional).'),
