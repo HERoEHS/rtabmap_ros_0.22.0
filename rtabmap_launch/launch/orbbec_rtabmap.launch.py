@@ -182,7 +182,10 @@ def launch_setup(context, *args, **kwargs):
                 'RGBD/StartAtOrigin': 'true',
                 'Optimizer/LandmarksIgnored': 'false',
             })],
-            remappings=remappings + [('map', LaunchConfiguration('map_topic'))],
+            # odom_topic 기본 'odom'(상대) = 종전 그대로 VO(/rtabmap/odom) 소비.
+            # 외부 odom(EKF 등) 쓸 땐 launch_odometry:=false odom_topic:=/odometry/filtered
+            remappings=remappings + [('map', LaunchConfiguration('map_topic')),
+                                     ('odom', LaunchConfiguration('odom_topic'))],
             # 매핑 모드는 -d(기존 DB 삭제 후 새로 시작), localization 모드는 DB 유지·로드
             arguments=[
                 LaunchConfiguration('rtabmap_args'),
@@ -214,7 +217,9 @@ def launch_setup(context, *args, **kwargs):
         Node(
             package='rtabmap_viz', executable='rtabmap_viz', name='rtabmap_viz', output='screen',
             parameters=[common_params],
-            remappings=remappings,
+            # odom remap 은 rtabmap 노드와 동일하게 — 외부 odom(EKF) 구성에서
+            # 기본 /rtabmap/odom 만 기다리면 동기화가 영영 안 찬다 (5초 경고 반복)
+            remappings=remappings + [('odom', LaunchConfiguration('odom_topic'))],
             condition=IfCondition(LaunchConfiguration('rtabmap_viz')),
             arguments=[LaunchConfiguration('gui_cfg')],
             prefix=LaunchConfiguration('launch_prefix'),
@@ -289,6 +294,12 @@ def generate_launch_description():
 
         DeclareLaunchArgument('approx_sync', default_value='true', description='rgb/depth 근사 시간동기화 (enable_frame_sync 완벽하면 false 가능)'),
 
+        # 외부 오도매트리 (sim/EKF): 기본 'odom'(상대 = VO 출력 /rtabmap/odom, 종전 동작).
+        # launch_odometry:=false 와 함께 /odometry/filtered 등 절대 토픽 지정
+        DeclareLaunchArgument('odom_topic', default_value='odom',
+                              description='rtabmap odom 입력. 기본은 VO(rgbd_odometry) 출력. '
+                                          '외부 odom(robot_localization EKF)이면 launch_odometry:=false 와 함께 지정'),
+
         # RGB-D 토픽 (orbbec 카메라, camera_name=camera 기준)
         DeclareLaunchArgument('rgb_topic',         default_value='/camera/color/image_raw',   description=''),
         DeclareLaunchArgument('depth_topic',       default_value='/camera/depth/image_raw',   description=''),
@@ -301,10 +312,26 @@ def generate_launch_description():
 
         # 카메라 드라이버
         DeclareLaunchArgument('launch_camera', default_value='true', description='카메라 드라이버 포함 실행 여부 (이미 켜져 있으면 false)'),
+    ] + _orbbec_camera_include() + [
+        OpaqueFunction(function=launch_setup)
+    ])
+
+
+def _orbbec_camera_include():
+    """orbbec_camera 드라이버 include — 미빌드 머신(sim, camera:=zed)에선 스킵.
+
+    get_package_share_directory 가 런치 파싱 시점에 무조건 평가되므로,
+    패키지가 없으면 launch_camera:=false 여도 스택 전체가 죽는다 — 여기서 가드."""
+    from ament_index_python.packages import PackageNotFoundError
+    try:
+        launch_dir = os.path.join(get_package_share_directory('orbbec_camera'), 'launch')
+    except PackageNotFoundError:
+        print('[orbbec_rtabmap] orbbec_camera 패키지 없음 — 카메라 드라이버 include 생략 '
+              '(sim/zed 구성이면 정상, 실물이면 OrbbecSDK_ROS2 빌드 필요)')
+        return []
+    return [
         IncludeLaunchDescription(
-            PythonLaunchDescriptionSource([os.path.join(
-                get_package_share_directory('orbbec_camera'), 'launch'),
-                '/gemini_330_series.launch.py']),
+            PythonLaunchDescriptionSource([launch_dir, '/gemini_330_series.launch.py']),
             launch_arguments={'depth_registration': 'true',
                               'enable_frame_sync': 'true',
                               # 640x480@15 고정: 네이티브(1280x800)는 픽셀 3.3배라 VO 단일스레드가
@@ -325,6 +352,4 @@ def generate_launch_description():
                               'enable_sync_output_accel_gyro': LaunchConfiguration('use_imu')}.items(),
             condition=IfCondition(LaunchConfiguration('launch_camera')),
         ),
-
-        OpaqueFunction(function=launch_setup)
-    ])
+    ]
