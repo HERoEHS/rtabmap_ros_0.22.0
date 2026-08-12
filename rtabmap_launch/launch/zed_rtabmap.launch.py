@@ -6,7 +6,7 @@
 #   /aeirobot/vslam_left_* 토픽과 EKF odom(/odometry/filtered)을 소비한다.
 #
 # 사용법 (slam_manager lifelong_zed_mapping 프로세스가 이 형태로 실행):
-#   ros2 launch rtabmap_launch zed_rtabmap.launch.py localization:=false database_path:=~/.ros/mapping/xxx.db
+#   ros2 launch rtabmap_launch zed_rtabmap.launch.py localization:=false database_path:=~/.aeirobot/maps/slam/xxx.db
 #
 import os
 

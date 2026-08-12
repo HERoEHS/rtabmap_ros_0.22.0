@@ -26,8 +26,10 @@ if not ROS_WS:
     raise RuntimeError("ROS_WS 환경변수가 설정되지 않았습니다. 예: export ROS_WS=/path/to/ws")
 FEATURE_EXTRACTORS = os.path.join(ROS_WS, 'src', 'alice_navigation', 'localization', 'feature_extractors')
 
-# 맵 DB 저장 위치 (기존 slam_manager 워크플로와 동일한 ~/.ros/mapping)
-MAP_DIR = os.path.expanduser('~/.ros/mapping')
+# 맵 DB 저장 위치 (slam_manager 워크플로와 동일한 맵 루트 slam/).
+# ~/.ros 를 안 쓰는 이유는 aeirobot_slam_manager/lifelong_maps.py 헤더 주석 참고.
+MAP_ROOT = os.environ.get('AEIROBOT_MAP_ROOT') or os.path.expanduser('~/.aeirobot/maps')
+MAP_DIR = os.path.join(MAP_ROOT, 'slam')
 os.makedirs(MAP_DIR, exist_ok=True)
 
 from launch import LaunchDescription
@@ -283,7 +285,7 @@ def generate_launch_description():
         DeclareLaunchArgument('publish_tf_map', default_value='true',              description=''),
         DeclareLaunchArgument('namespace',      default_value='rtabmap',           description=''),
         DeclareLaunchArgument('database_path',  default_value=os.path.join(MAP_DIR, 'orbbec_rtabmap.db'),
-                              description='맵 DB 경로 (매핑 모드는 시작 시 삭제 후 새로 생성, localization 모드는 로드). 예: database_path:=~/.ros/mapping/field_x.db'),
+                              description='맵 DB 경로 (매핑 모드는 시작 시 삭제 후 새로 생성, localization 모드는 로드). 예: database_path:=~/.aeirobot/maps/slam/field_x.db'),
         DeclareLaunchArgument('topic_queue_size', default_value='10',              description=''),
         DeclareLaunchArgument('sync_queue_size',  default_value='10',              description=''),
         DeclareLaunchArgument('wait_for_transform', default_value='0.2',           description=''),
