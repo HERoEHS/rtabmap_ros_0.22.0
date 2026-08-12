@@ -8,52 +8,18 @@
 # 사용법 (slam_manager lifelong_zed_mapping 프로세스가 이 형태로 실행):
 #   ros2 launch rtabmap_launch zed_rtabmap.launch.py localization:=false database_path:=~/.aeirobot/maps/slam/xxx.db
 #
+
 import os
 
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
-from launch.conditions import IfCondition
+from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
-    # zed_sdk_stream:=true 면 aeirobot_zed_camera 노드가 Isaac ZED extension
-    # 스트림을 실 ZED SDK 로 처리해서 /aeirobot/vslam_* 발행 (zed_lifelong 과 동일)
-    zed_sdk_stream_arg = DeclareLaunchArgument(
-        'zed_sdk_stream', default_value='false',
-        description='Isaac ZED SDK 스트림 카메라 노드 기동 여부')
-    stream_ip_arg = DeclareLaunchArgument(
-        'stream_ip', default_value='127.0.0.1',
-        description='ZED SDK 스트림 IP (Isaac 실행 머신)')
-    stream_port_arg = DeclareLaunchArgument(
-        'stream_port', default_value='30000',
-        description='ZED SDK 스트림 포트 (Isaac zed_streaming_port)')
-    camera_fps_arg = DeclareLaunchArgument(
-        'camera_fps', default_value='30',
-        description='grab FPS (Isaac zed_fps와 일치)')
-
-    zed_sdk_camera = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(
-            get_package_share_directory('aeirobot_zed_camera'),
-            'launch', 'camera_img_only.launch.py')),
-        condition=IfCondition(LaunchConfiguration('zed_sdk_stream')),
-        launch_arguments={
-            'stream_ip': LaunchConfiguration('stream_ip'),
-            'stream_port': LaunchConfiguration('stream_port'),
-            'camera_fps': LaunchConfiguration('camera_fps'),
-            'use_sim_time': 'true',
-            'use_node_clock_stamp': 'true',
-        }.items())
-
     return LaunchDescription([
-        zed_sdk_stream_arg,
-        stream_ip_arg,
-        stream_port_arg,
-        camera_fps_arg,
-        zed_sdk_camera,
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(
                 get_package_share_directory('rtabmap_launch'),
