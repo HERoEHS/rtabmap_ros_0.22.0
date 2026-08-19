@@ -58,9 +58,13 @@ def launch_setup(context, *args, **kwargs):
         'wait_for_transform': LaunchConfiguration('wait_for_transform'),
         'topic_queue_size': LaunchConfiguration('topic_queue_size'),
         'sync_queue_size': LaunchConfiguration('sync_queue_size'),
-        'qos': 2,
-        'qos_image': 2,
-        'qos_camera_info': 2,
+        # 기본 2(Best Effort) = 라이브 카메라용. bag 재생은 qos:=1(Reliable) 로 —
+        # 고해상도 raw 버스트 + 시스템 부하 시 best-effort 가 depth 만 드랍해
+        # sync 가 조용히 죽는다 (실측: best-effort 3건 vs reliable 341/341).
+        'qos': ParameterValue(LaunchConfiguration('qos'), value_type=int),
+        'qos_image': ParameterValue(LaunchConfiguration('qos'), value_type=int),
+        'qos_camera_info': ParameterValue(LaunchConfiguration('qos'), value_type=int),
+        'qos_odom': ParameterValue(LaunchConfiguration('qos'), value_type=int),
     }
 
     remappings = [
@@ -286,6 +290,7 @@ def generate_launch_description():
         DeclareLaunchArgument('namespace',      default_value='rtabmap',           description=''),
         DeclareLaunchArgument('database_path',  default_value=os.path.join(MAP_DIR, 'orbbec_rtabmap.db'),
                               description='맵 DB 경로 (매핑 모드는 시작 시 삭제 후 새로 생성, localization 모드는 로드). 예: database_path:=~/.aeirobot/maps/slam/field_x.db'),
+        DeclareLaunchArgument('qos', default_value='2', description='구독 QoS: 2=BestEffort(라이브 카메라), 1=Reliable(bag 재생 — 드랍 방지)'),
         DeclareLaunchArgument('topic_queue_size', default_value='10',              description=''),
         DeclareLaunchArgument('sync_queue_size',  default_value='10',              description=''),
         DeclareLaunchArgument('wait_for_transform', default_value='0.2',           description=''),
