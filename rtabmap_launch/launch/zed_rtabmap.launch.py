@@ -26,6 +26,7 @@ def generate_launch_description():
                 'launch', 'orbbec_rtabmap.launch.py')),
             launch_arguments={
                 'use_sim_time': 'true',
+                'rviz': 'false',                  # 매핑 감독 GUI 는 rtabmap_viz 로 충분 — rviz2 중복 제거
                 'launch_camera': 'false',
                 'launch_odometry': 'false',       # VO 대신 EKF odom
                 'subscribe_odom_info': 'false',   # 외부 odom 은 odom_info 미발행
