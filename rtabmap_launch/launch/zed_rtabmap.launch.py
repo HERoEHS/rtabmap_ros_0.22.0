@@ -14,19 +14,23 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 
 def generate_launch_description():
     return LaunchDescription([
+        # rviz:=true 면 rtabmap 제공 rviz2(rgbd.rviz)를 rtabmap_viz 와 같이 띄운다.
+        # 매니저 매핑 프로파일(lifelong_zed_mapping)만 켠다 — 로컬모드는 nav2 rviz 가 있다.
+        DeclareLaunchArgument('rviz', default_value='false'),
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource(os.path.join(
                 get_package_share_directory('rtabmap_launch'),
                 'launch', 'orbbec_rtabmap.launch.py')),
             launch_arguments={
                 'use_sim_time': 'true',
-                'rviz': 'false',                  # 매핑 감독 GUI 는 rtabmap_viz 로 충분 — rviz2 중복 제거
+                'rviz': LaunchConfiguration('rviz'),
                 'launch_camera': 'false',
                 'launch_odometry': 'false',       # VO 대신 EKF odom
                 'subscribe_odom_info': 'false',   # 외부 odom 은 odom_info 미발행

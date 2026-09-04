@@ -235,6 +235,8 @@ def launch_setup(context, *args, **kwargs):
         Node(
             package='rviz2', executable='rviz2', name='rviz2', output='screen',
             condition=IfCondition(LaunchConfiguration('rviz')),
+            # sim clock 이면 rviz 도 sim time 이어야 TF 가 맞는다 (없으면 벽시계로 조회해 전부 too old)
+            parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
             arguments=[['-d'], [LaunchConfiguration('rviz_cfg')]]),
     ]
 
