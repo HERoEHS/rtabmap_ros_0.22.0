@@ -28,7 +28,8 @@
   <depend>aruco_msgs</depend>
   <depend>aruco_opencv_msgs</depend>
   <!-- depend>aruco_markers_msgs</depend --> <!-- binaries only available on humble -->
-  <depend>alice_localization_msgs</depend>
+  <!-- 로보컵(pelvis pose override) 전용 — AEIROBOT_ROBOCUP=1 환경에서만 의존 (rosdep/colcon 조건) -->
+  <depend condition="$AEIROBOT_ROBOCUP == 1">alice_localization_msgs</depend>
   <depend>aeirobot_toolbox</depend>
   <depend>tf2_geometry_msgs</depend>
 

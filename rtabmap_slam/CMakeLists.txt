@@ -29,7 +29,17 @@ find_package(rtabmap_util REQUIRED)
 find_package(rtabmap_sync REQUIRED)
 # alice4 커스터마이즈: CoreWrapper.h 가 alice_localization_msgs / aeirobot_toolbox 의
 # QoS 프로파일을 사용한다. tf2_geometry_msgs 는 좌표 변환 헬퍼.
-find_package(alice_localization_msgs REQUIRED)
+# alice_localization_msgs(로보컵 pelvis pose override)는 선택 — 있으면 HAVE_ALICE_LOCALIZATION_MSGS 로 켠다.
+# 실기 축소 워크스페이스(Orin)엔 없고 package.xml 은 AEIROBOT_ROBOCUP=1 일 때만 의존을 선언한다 (2026-09-08).
+find_package(alice_localization_msgs QUIET)
+if(alice_localization_msgs_FOUND)
+  add_compile_definitions(HAVE_ALICE_LOCALIZATION_MSGS)
+  set(ALICE_LOC_MSGS_DEP alice_localization_msgs)
+  message(STATUS "rtabmap_slam: alice_localization_msgs 발견 — robotPoseInfo override 활성")
+else()
+  set(ALICE_LOC_MSGS_DEP "")
+  message(STATUS "rtabmap_slam: alice_localization_msgs 없음 — robotPoseInfo override 비활성")
+endif()
 find_package(tf2_geometry_msgs REQUIRED)
 find_package(aeirobot_toolbox REQUIRED)
 
@@ -63,7 +73,7 @@ SET(Libraries
    rtabmap_util
    rtabmap_sync
    tf2_geometry_msgs                # alice4: 좌표 변환 헬퍼
-   alice_localization_msgs          # alice4: 커스텀 메시지 타입
+   ${ALICE_LOC_MSGS_DEP}            # alice4: 커스텀 메시지 타입 (선택)
    aeirobot_toolbox                 # alice4: QoS 프로파일 (qos_profiles.hpp)
 )
 
